@@ -70,14 +70,14 @@ def g_inference(inputs):
         for i in range(4):
             w = weight_variable([5, 5, o_depth[i], i_depth[i]])
             b = bias_variable([o_depth[i]])
-            dc = tf.nn.conv2d_transpose(out, w, [2000, 4 * 2 ** (i + 1), 4 * 2 ** (i + 1), o_depth[i]], [1, 2, 2, 1])
+            dc = tf.nn.conv2d_transpose(out, w, [2000, 4 * 2 ** (i + 2), 4 * 2 ** (i + 2), o_depth[i]], [1, 2, 2, 1])
             out = tf.nn.bias_add(dc, b)
             if i < 3:
                 mean, variance = tf.nn.moments(out, [0, 1, 2])
                 out = tf.nn.relu(tf.nn.batch_normalization(out, mean, variance, None, None, 1e-5))
                 tf.nn.tanh(out)
     return tf.nn.tanh(out)
-          #shape=(2000, 64, 64, 3)
+          #shape=(2000, 128, 128, 3)
 
 
 
