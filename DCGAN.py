@@ -6,7 +6,7 @@ import _pickle as cPickle
 import os
 
 
-#weight_variable_funtion1
+#weight_variable_funtion
 def weight_variable(shape):
     initial = tf.truncated_normal(shape, stddev=0.1)
     return tf.Variable(initial)
@@ -20,19 +20,8 @@ def bias_variable(shape):
 def conv2d(x, W):
     return tf.nn.conv2d(x, W, strides=[1, 1, 1, 1], padding='SAME')
 
-# bais_function2
-def weight_variable2(shape):
-    initial = tf.truncated_normal(shape, stddev=0.2)
-    return tf.Variable(initial)
-    
-#weight_variable_funtion2
-def weight_variable3(shape):
-    initial = tf.truncated_normal(shape, stddev=0.02)
-    return tf.Variable(initial)
 
-# convd2d_function2
-def conv22d(x, W):
-    return tf.nn.conv2d(x, W, strides=[1, 2, 2, 1], padding='SAME')
+
 
 #image_data(x)
 def unpickle(file):
@@ -82,30 +71,45 @@ def g_inference(inputs):
 
 
 #discriminator
+# for weight-function
+def weight_variable1(shape):
+    initial = tf.truncated_normal(shape, stddev=0.01)
+    return tf.Variable(initial)
+
+# for bias-funciton
+def bias_variable1(shape):
+    initial = tf.constant(0.02, shape=shape)
+    return tf.Variable(initial)
+
 
 def discriminator(x):
     depths = [3, 64, 128, 256, 512]
     i_depth = depths[0:4]
     o_depth = depths[1:5]
     with tf.variable_scope('d'):
+        outputs = x
         # convolution layer
         for i in range(4):
-            w = weight_variable2([5, 5, i_depth[i], o_depth[i]])
-            b = bias_variable([o_depth[i]])
-            outputs=tf.reshape(x, [-1,o_depth[i],o_depth[i],i_depth[i]])
-            c = tf.nn.bias_add(conv22d(outputs, w), b)
-            mean, variance = tf.nn.moments(c, [0, 1, 2])
-            bn = tf.nn.batch_normalization(c, mean, variance, None, None, 1e-5)
-            outputs = tf.maximum(0.2 * bn, bn)
-            # reshepe and fully connect to 2 classes
+            with tf.variable_scope('conv%d' % i):
+                w = weight_variable1([5, 5, i_depth[i], o_depth[i]])
+                b = bias_variable1([o_depth[i]])
+                c = tf.nn.bias_add(tf.nn.conv2d(outputs, w, [1, 2, 2, 1], padding='SAME'), b)
+                mean, variance = tf.nn.moments(c, [0, 1, 2])
+                bn = tf.nn.batch_normalization(c, mean, variance, None, None, 1e-5)
+                outputs = tf.maximum(0.2 * bn, bn)
+                # reshepe and fully connect to 2 classes
+        with tf.variable_scope('classify'):
             dim = 1
             for d in outputs.get_shape()[1:].as_list():
                 dim *= d
-                w = weight_variable3([dim, 2])
-                b = bias_variable([2])
-                tf.nn.bias_add(tf.matmul(tf.reshape(outputs, [-1, dim]), w), b)
-                return tf.nn.bias_add(tf.matmul(tf.reshape(outputs, [-1, dim]), w), b)
-               #(?, 2)
+            w = weight_variable1([dim, 2])
+            b = bias_variable1([2])
+    reuse = True
+    return tf.nn.bias_add(tf.matmul(tf.reshape(outputs, [-1, dim]), w), b)
+#shape=(self.batchsize, 2)
+
+
+
 #Placeholder
 output_from_noise = tf.placeholder(tf.float32, [2000, 3])
 output_from_given_data = tf.placeholder(tf.float32, [2000, 128, 128, 3])
