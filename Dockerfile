@@ -8,6 +8,6 @@ RUN pip3 install keras tensorflow-gpu jupyter opencv-python
 RUN apt-get -y install python3.5 python3.5-dev
 RUN apt-get -y install python3-numpy python3-scipy python3-matplotlib
 
-VOLUME ["/dcgan/data", "/dcgan/data"]
+VOLUME ["/tmp/dcgan", "/tmp/dcgan"]
 
 ENTRYPOINT ["python3 DCGANs.py", "-D", "FOREGROUND"]
