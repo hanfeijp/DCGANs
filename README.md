@@ -4,12 +4,12 @@
 
 ```text
 # Select either the CPU or GPU base image
-$ docker build -t image_classification .
+$ docker build -t dcgan .
 ```
 
 ## Start Docker Container Instance
 ```text
-$ docker run -it image_classification
+$ docker run -it dcgan
 ```
 
 

@@ -4,7 +4,7 @@ import numpy as np
 import tensorflow as tf
 
 
-# reading image from pickle file
+# Loading images from pickle file
 def unpickle(file):
     fp = open(file, 'rb')
     if sys.version_info.major == 2:
@@ -12,19 +12,12 @@ def unpickle(file):
     elif sys.version_info.major == 3:
         data = np.load(fp, encoding='latin1')
     else:
-        raise SystemExit('Support Python version cannot be found. Exiting!')
+        raise SystemExit('Supported Python version cannot be found. Exiting!')
     fp.close()
     return data
 
 
-X_train = unpickle('seen_batch.pickle')
-X_image = X_train / 255  # shape=(5104, 128, 128, 3)
-
 # Generator
-
-inputs = tf.random_uniform([5104, 100], minval=-1.0, maxval=1.0)
-
-
 def g_inference(x):
     depths = [250, 150, 90, 54, 3]
     i_depth = depths[0:4]
@@ -84,6 +77,27 @@ def discriminator(x):
     return tf.nn.bias_add(tf.matmul(tf.reshape(outputs, [-1, dim]), w), b)
 
 
+# loss function
+def loss(logits_from_g, logits_from_i):
+    loss_1 = tf.reduce_mean(tf.nn.sparse_softmax_cross_entropy_with_logits(logits=logits_from_g,
+                                                                           labels=tf.zeros([5104], dtype=tf.int64)))
+    loss_2 = tf.reduce_mean(tf.nn.sparse_softmax_cross_entropy_with_logits(logits=logits_from_i,
+                                                                           labels=tf.ones([5104], dtype=tf.int64)))
+    return [loss_1, loss_2]
+
+
+# training function
+def training(_loss, n):
+    train_step = tf.train.GradientDescentOptimizer(learning_rate=0.1).minimize(_loss, var_list=n)
+    return train_step
+
+
+# DEFINE ALL FUNCTIONS AT THE TOP OF FILE
+
+X_train = unpickle('seen_batch.pickle')
+X_image = X_train / 255  # shape=(5104, 128, 128, 3)
+inputs = tf.random_uniform([5104, 100], minval=-1.0, maxval=1.0)
+
 # TODO: not defined discriminator(x) and g_inference(x) before definition, d_vars and g_vars is empty
 # each variable in Discriminator
 d_vars = [v for v in tf.trainable_variables() if v.name.startswith('d')]
@@ -105,21 +119,6 @@ logits_from_g = discriminator(g_output)
 
 # D(x)
 logits_from_i = discriminator(image)
-
-
-# loss function
-def loss(logits_from_g, logits_from_i):
-    loss_1 = tf.reduce_mean(tf.nn.sparse_softmax_cross_entropy_with_logits(logits=logits_from_g,
-                                                                           labels=tf.zeros([5104], dtype=tf.int64)))
-    loss_2 = tf.reduce_mean(tf.nn.sparse_softmax_cross_entropy_with_logits(logits=logits_from_i,
-                                                                           labels=tf.ones([5104], dtype=tf.int64)))
-    return [loss_1, loss_2]
-
-
-# training function
-def training(_loss, n):
-    train_step = tf.train.GradientDescentOptimizer(learning_rate=0.1).minimize(_loss, var_list=n)
-    return train_step
 
 
 # loss definition
