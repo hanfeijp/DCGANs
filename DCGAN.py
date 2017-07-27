@@ -78,10 +78,10 @@ def discriminator(x):
 
 
 # loss function
-def loss(logits_from_g, logits_from_i):
-    loss_1 = tf.reduce_mean(tf.nn.sparse_softmax_cross_entropy_with_logits(logits=logits_from_g,
+def loss(g_logits, i_logits):
+    loss_1 = tf.reduce_mean(tf.nn.sparse_softmax_cross_entropy_with_logits(logits=g_logits,
                                                                            labels=tf.zeros([5104], dtype=tf.int64)))
-    loss_2 = tf.reduce_mean(tf.nn.sparse_softmax_cross_entropy_with_logits(logits=logits_from_i,
+    loss_2 = tf.reduce_mean(tf.nn.sparse_softmax_cross_entropy_with_logits(logits=i_logits,
                                                                            labels=tf.ones([5104], dtype=tf.int64)))
     return [loss_1, loss_2]
 
@@ -120,15 +120,10 @@ logits_from_g = discriminator(g_output)
 # D(x)
 logits_from_i = discriminator(image)
 
-
 # loss definition
-# TODO: Either define logits_from_g and logits_from_i as global values or pass them via function.
-# If you pass them via method then the variable names need to be different
-
 d_loss_fake, d_loss_real = loss(logits_from_g, logits_from_i)
 g_loss = tf.reduce_mean(tf.nn.sparse_softmax_cross_entropy_with_logits(logits=logits_from_g,
                                                                        labels=tf.ones([5104], dtype=tf.int64)))
-
 # training op
 d_train_op = training(d_loss_fake + d_loss_real, d_vars)
 g_train_op = training(g_loss, g_vars)
