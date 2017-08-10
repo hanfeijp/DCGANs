@@ -114,13 +114,14 @@ def sampler(z_):# shape=(batch_size, 64, 64, 3)　
         h4 = deconv2d(h3, [batch_size, 64, 64, 3], name='g_h4')
     return tf.nn.tanh(h4)  #shape=(batch_size, 64, 64, 3)
 
-
-# In[9]:
-
-# TODO:if you get the error 「Variable discriminator/d_h0_conv/w already exists, disallowed. Did you mean to set reuse=True in VarScope? Originally defined at:」,Use 'tf.get_variable_scope().reuse_variables()'
 G=generator(z)  #G(z)
 D_logits = discriminator(image) #D(x)
 sampler = sampler(z)
+
+
+# In[4]:
+
+tf.get_variable_scope().reuse_variables()
 D_logits_ = discriminator(G)   #D(G(z))
 
 
