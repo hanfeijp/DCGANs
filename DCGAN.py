@@ -24,8 +24,6 @@ def batch_norm(c):
     bn = tf.nn.batch_normalization(c, mean, variance, None, None, 1e-5)
     return bn
 
-
-
 def conv2d(input_, output_dim, name="conv2d"):
     with tf.variable_scope(name):
         w = tf.get_variable('w', [5, 5, input_.get_shape()[-1], output_dim], initializer=tf.truncated_normal_initializer(stddev=0.02))
@@ -33,21 +31,15 @@ def conv2d(input_, output_dim, name="conv2d"):
         biases = tf.get_variable('biases', [output_dim], initializer=tf.constant_initializer(0.0))
         return tf.reshape(tf.nn.bias_add(conv, biases), conv.get_shape())
     
-    
-    
 def lrelu(x, name="lrelu"):
     return tf.maximum(x, 0.2*x)
-
-
 
 def linear(input_, output_size):
     shape = input_.get_shape().as_list()
     with tf.variable_scope("Linear"):
         matrix = tf.get_variable("Matrix", [shape[1], output_size], tf.float32, tf.random_normal_initializer(stddev=0.02))
         bias = tf.get_variable("bias", [output_size], initializer=tf.constant_initializer(0.0))
-    return tf.matmul(input_, matrix) + bias
-
-
+    return tf.nn.bias_add(tf.matmul(input_, matrix),bias)
 
 def deconv2d(input_, output_shape, name="deconv2d"):
     with tf.variable_scope(name):
@@ -80,14 +72,13 @@ X_image=np.array(img_batch)/ 255
 # In[8]:    discriminator, generator and sampler
 
 def discriminator(image):
-    batch_size=317
+    batch_size=300
     with tf.variable_scope("discriminator") as scope:
         h0 = lrelu(conv2d(image, 64, name='d_h0_conv'))
         h1 = lrelu(batch_norm(conv2d(h0, 128, name='d_h1_conv')))
         h2 = lrelu(batch_norm(conv2d(h1, 256, name='d_h2_conv')))
         h3 = lrelu(batch_norm(conv2d(h2, 512, name='d_h3_conv')))
-        h4 = linear(tf.reshape(h3, [batch_size, -1]), 2)
-        return tf.nn.sigmoid(h4) # shape=(batch_size, 64, 64, 3)　
+        return linear(tf.reshape(h3, [batch_size, -1]), 2) # shape=(batch_size, 64, 64, 3)　
     
     
 def generator(z_):# shape=(batch_size, 64, 64, 3)
