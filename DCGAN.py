@@ -119,7 +119,7 @@ D_logits = discriminator(image) #D(x)
 sampler = sampler(z)
 
 
-# In[4]:
+# In[9]:
 
 tf.get_variable_scope().reuse_variables()
 D_logits_ = discriminator(G)   #D(G(z))
