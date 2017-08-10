@@ -1,148 +1,179 @@
+# coding: utf-8
+
+# In[1]:  # build model
+
 import sys
 import pickle
 import numpy as np
 import tensorflow as tf
+import _pickle as cPickle
+import os
+import matplotlib.pyplot as plt
+import cv2
 
-# TODO: first copy and paste unitil line63
-# Generator
-
-inputs = tf.random_uniform([1000, 100], minval=-1.0, maxval=1.0)
-
-def g_inference(x):
-    depths = [250, 150, 90, 54, 3]
-    i_depth = depths[0:4]
-    o_depth = depths[1:5]
-    with tf.variable_scope('g'):
-        # reshape from inputs
-        with tf.variable_scope('reshape'):
-            w0 = tf.get_variable('weights',[100, i_depth[0] * 8 * 8], tf.float32, tf.truncated_normal_initializer(stddev=0.02))
-            b0 = tf.get_variable('biases', [i_depth[0]], tf.float32, tf.zeros_initializer)
-            dc0 = tf.nn.bias_add(tf.reshape(tf.matmul(x, w0), [-1, 8, 8, i_depth[0]]), b0)
-            mean0, variance0 = tf.nn.moments(dc0, [0, 1, 2])
-            bn0 = tf.nn.batch_normalization(dc0, mean0, variance0, None, None, 1e-5)
-            out = tf.nn.relu(bn0)  #shape=(100, 8, 8, 512)
-        # deconvolution layers
-        for i in range(4):
-            with tf.variable_scope('conv%d' % (i + 1)):
-                w = tf.get_variable('weights', [5, 5, o_depth[i], i_depth[i]], tf.float32, tf.truncated_normal_initializer(stddev=0.02))
-                b = tf.get_variable('biases',[o_depth[i]], tf.float32, tf.zeros_initializer)
-                dc = tf.nn.conv2d_transpose(out, w, [1000, 8 * 2 ** (i+1), 8 * 2 ** (i+1), o_depth[i]], [1, 2, 2, 1])
-                out = tf.nn.bias_add(dc, b)
-                if i < 3:
-                    mean, variance = tf.nn.moments(out, [0, 1, 2])
-                    out = tf.nn.relu(tf.nn.batch_normalization(out, mean, variance, None, None, 1e-5))
-                    tf.nn.tanh(out)
-    return tf.nn.tanh(out)
-          #shape=shape=(400, 64, 64, 3)
+z = tf.placeholder(tf.float32, [None, 100])
+image = tf.placeholder(tf.float32, [317, 64, 64, 3])
 
 
-# Discriminator
-def discriminator(x):
-    depths = [3,128, 256, 512,1024]
-    i_depth = depths[0:4]
-    o_depth = depths[1:5]
-    with tf.variable_scope('d'):
-        outputs = x
-        # convolution layer
-        for i in range(4):
-            with tf.variable_scope('conv%d' % i):
-                w = tf.get_variable('weights', [5, 5, i_depth[i], o_depth[i]], tf.float32, tf.truncated_normal_initializer(stddev=0.02))
-                b = tf.get_variable('biases', [o_depth[i]], tf.float32, tf.zeros_initializer)
-                c = tf.nn.bias_add(tf.nn.conv2d(outputs, w, [1, 2, 2, 1], padding='SAME'), b)
-                mean, variance = tf.nn.moments(c, [0, 1, 2])
-                bn = tf.nn.batch_normalization(c, mean, variance, None, None, 1e-5)
-                outputs = tf.maximum(0.2 * bn, bn)
-                # reshepe and fully connect to 2 classes
-        with tf.variable_scope('classify'):
-            dim =1
-            for d in outputs.get_shape()[1:].as_list():
-                dim *= d
-            w =tf.get_variable('weights',[dim, 2], tf.float32, tf.truncated_normal_initializer(stddev=0.02))
-            b = tf.get_variable('biases', [2], tf.float32, tf.zeros_initializer)
-            tf.nn.bias_add(tf.matmul(tf.reshape(outputs, [-1, dim]), w), b)
-    return tf.nn.bias_add(tf.matmul(tf.reshape(outputs, [-1, dim]), w), b)
+sample_z = np.random.uniform(-1, 1, size=(100, 100))
+batch_z = np.random.uniform(-1, 1, [317, 100])
 
 
-# TODO: 2th line 67 and 68 copy and paste and activate(push shift and enter key)
-x= tf.placeholder(tf.float32, [1000,128,128, 3])
-discriminator(x)
+def batch_norm(c):
+    mean, variance = tf.nn.moments(c, [0, 1, 2])
+    bn = tf.nn.batch_normalization(c, mean, variance, None, None, 1e-5)
+    return bn
 
 
-# TODO: 3th line72 73 acitivate(d_vars has value) 
-d_vars = [v for v in tf.trainable_variables() if v.name.startswith('d')]
-d_vars
+
+def conv2d(input_, output_dim, name="conv2d"):
+    with tf.variable_scope(name):
+        w = tf.get_variable('w', [5, 5, input_.get_shape()[-1], output_dim], initializer=tf.truncated_normal_initializer(stddev=0.02))
+        conv = tf.nn.conv2d(input_, w, strides=[1, 2, 2, 1], padding='SAME')
+        biases = tf.get_variable('biases', [output_dim], initializer=tf.constant_initializer(0.0))
+        return tf.reshape(tf.nn.bias_add(conv, biases), conv.get_shape())
+    
+    
+    
+def lrelu(x, name="lrelu"):
+    return tf.maximum(x, 0.2*x)
 
 
-# TODO: 4th iamge setting line76 to 88(this time amount of images are 1000)
+
+def linear(input_, output_size):
+    shape = input_.get_shape().as_list()
+    with tf.variable_scope("Linear"):
+        matrix = tf.get_variable("Matrix", [shape[1], output_size], tf.float32, tf.random_normal_initializer(stddev=0.02))
+        bias = tf.get_variable("bias", [output_size], initializer=tf.constant_initializer(0.0))
+    return tf.matmul(input_, matrix) + bias
+
+
+
+def deconv2d(input_, output_shape, name="deconv2d"):
+    with tf.variable_scope(name):
+        # filter : [height, width, output_channels, in_channels]
+        w = tf.get_variable('w', [5, 5, output_shape[-1], input_.get_shape()[-1]], initializer=tf.random_normal_initializer(stddev=0.02))
+        deconv = tf.nn.conv2d_transpose(input_, w, output_shape=output_shape, strides=[1, 2, 2, 1])
+        b = tf.get_variable('biases', [output_shape[-1]], initializer=tf.constant_initializer(0.0))
+    return tf.reshape(tf.nn.bias_add(deconv, b), deconv.get_shape())
+
+
+
+
+# In[2]:  # read image form pickle file
+
 def unpickle(file):
     fp = open(file, 'rb')
     if sys.version_info.major == 2:
         data = pickle.load(fp)
     elif sys.version_info.major == 3:
-        data = np.load(fp, encoding='latin1')
+        data = pickle.load(fp, encoding='latin-1')
     fp.close()
     return data
 
-X_train=unpickle('seen_batch.pickle')
-X_image=X_train/ 255
-X_image=X_image[:1000]
+img_batch= unpickle("62_seen_batch.pickle")
+
+X_image=np.array(img_batch)/ 255
+# shape=(batch_size, 64, 64, 3)
 
 
-# TODO:5th copy and paste line91 to 95 and activate line95
-z = tf.placeholder(tf.float32, [None, 100])
-image = tf.placeholder(tf.float32, [None, 128, 128, 3])
-g_output=g_inference(z)
-g_output
+# In[8]:    discriminator, generator and sampler
 
-
-# TODO: 6th copy and paste line99 to 101
-tf.get_variable_scope().reuse_variables()
-logits_from_g = discriminator(g_output)
-logits_from_i = discriminator(image)
-
-# TODO: 7th line104 to 110 and acitivate 109
-def loss(logits_from_g, logits_from_i):
-    loss_1 = tf.reduce_mean(tf.nn.sparse_softmax_cross_entropy_with_logits(logits=logits_from_g,labels=tf.zeros([1000], dtype=tf.int64)))
-    loss_2 = tf.reduce_mean(tf.nn.sparse_softmax_cross_entropy_with_logits(logits=logits_from_i,labels=tf.ones([1000], dtype=tf.int64)))
-    return [loss_1, loss_2]
-
-g_vars = [v for v in tf.trainable_variables() if v.name.startswith('g')]
-
-
-
-# TODO: 8th copy and paste line114 to 121
-# 勾配
-def training(loss, n):
-    train_step = tf.train.GradientDescentOptimizer(learning_rate=0.1).minimize(loss, var_list=n)
-    return train_step
-
-# loss
-d_loss_fake, d_loss_real = loss(logits_from_g, logits_from_i)
-g_loss = tf.reduce_mean(tf.nn.sparse_softmax_cross_entropy_with_logits(logits=logits_from_g,labels=tf.ones([1000], dtype=tf.int64)))
-                     
-
-    
-# TODO: 9th copy and paste line126 to 128
-# training 
-d_train_op = training(d_loss_fake + d_loss_real,d_vars)
-g_train_op = training(g_loss,g_vars)
-
-
-
-# TODO: 10th copy and paste line 133 to 134 and activate 133 and 134
-with tf.Session() as sess:
-    noise = inputs.eval()
+def discriminator(image):
+    batch_size=317
+    with tf.variable_scope("discriminator") as scope:
+        h0 = lrelu(conv2d(image, 64, name='d_h0_conv'))
+        h1 = lrelu(batch_norm(conv2d(h0, 128, name='d_h1_conv')))
+        h2 = lrelu(batch_norm(conv2d(h1, 256, name='d_h2_conv')))
+        h3 = lrelu(batch_norm(conv2d(h2, 512, name='d_h3_conv')))
+        h4 = linear(tf.reshape(h3, [batch_size, -1]), 2)
+        return tf.nn.sigmoid(h4) # shape=(batch_size, 64, 64, 3)　
     
     
-# TODO: 11th finally copy and paste line138 to 148 and activate
-sess=tf.Session()
-sess.run(tf.global_variables_initializer())
-num_steps = 1
-for step in range(num_steps):
-    sess.run(d_train_op, feed_dict = {z: noise, image: X_image})
-    sess.run(g_train_op, feed_dict = {z: noise})
-    if step % 1 == 0:
-        d_loss_noise, d_loss_image = sess.run([d_loss_fake,d_loss_real], feed_dict = {
-        z: noise,
-        image: X_image})
-        print('step: %d, loss_noise: %f, loss_image: %f'%(step, d_loss_noise, d_loss_image))
+def generator(z_):# shape=(batch_size, 64, 64, 3)
+    batch_size=317
+    with tf.variable_scope("generator") as scope:
+        # project `z` and reshape
+        z= linear(z_, 32*8*4*4)
+        h0 = tf.nn.relu(batch_norm(tf.reshape(z, [-1, 4, 4, 32*8])))
+        h1 = tf.nn.relu(batch_norm(deconv2d(h0, [batch_size, 8, 8, 32*4], name='g_h1')))
+        h2 = tf.nn.relu(batch_norm(deconv2d(h1, [batch_size, 16, 16, 32*2], name='g_h2')))
+        h3 = tf.nn.relu(batch_norm(deconv2d(h2, [batch_size, 32, 32, 32*1], name='g_h3')))
+        h4 = deconv2d(h3, [batch_size, 64, 64, 3], name='g_h4')
+    return tf.nn.tanh(h4)  #shape=(batch_size, 64, 64, 3)
+
+def sampler(z_):# shape=(batch_size, 64, 64, 3)　
+    batch_size=100
+    with tf.variable_scope("sampler") as scope:
+        # project `z` and reshape
+        z= linear(z_, 32*8*4*4)
+        h0 = tf.nn.relu(batch_norm(tf.reshape(z, [-1, 4, 4, 32*8])))
+        h1 = tf.nn.relu(batch_norm(deconv2d(h0, [batch_size, 8, 8, 32*4], name='g_h1')))
+        h2 = tf.nn.relu(batch_norm(deconv2d(h1, [batch_size, 16, 16, 32*2], name='g_h2')))
+        h3 = tf.nn.relu(batch_norm(deconv2d(h2, [batch_size, 32, 32, 32*1], name='g_h3')))
+        h4 = deconv2d(h3, [batch_size, 64, 64, 3], name='g_h4')
+    return tf.nn.tanh(h4)  #shape=(batch_size, 64, 64, 3)
+
+
+# In[9]:
+
+# TODO:if you get the error 「Variable discriminator/d_h0_conv/w already exists, disallowed. Did you mean to set reuse=True in VarScope? Originally defined at:」,Use 'tf.get_variable_scope().reuse_variables()'
+G=generator(z)  #G(z)
+D_logits = discriminator(image) #D(x)
+sampler = sampler(z)
+D_logits_ = discriminator(G)   #D(G(z))
+
+
+# In[10]: # loss function
+
+d_loss_real = tf.reduce_mean(tf.nn.sparse_softmax_cross_entropy_with_logits(logits=D_logits, labels=tf.ones([317], dtype=tf.int64)))
+d_loss_fake = tf.reduce_mean(tf.nn.sparse_softmax_cross_entropy_with_logits(logits=D_logits_, labels=tf.zeros([317], dtype=tf.int64)))
+
+
+g_loss = tf.reduce_mean(tf.nn.sparse_softmax_cross_entropy_with_logits(logits=D_logits_, labels=tf.ones([317], dtype=tf.int64)))
+d_loss = d_loss_real + d_loss_fake
+
+
+# In[11]:  # optim
+
+d_vars = [var for var in tf.trainable_variables() if 'd_' in var.name]
+g_vars = [var for var in tf.trainable_variables() if 'g_' in var.name]
+
+d_optim = tf.train.GradientDescentOptimizer(0.0001).minimize(d_loss, var_list=d_vars)
+g_optim = tf.train.GradientDescentOptimizer(0.0001).minimize(g_loss, var_list=g_vars)
+
+
+
+# In[13]:    # train
+
+run_config = tf.ConfigProto()
+run_config.gpu_options.allow_growth=True
+with tf.Session(config=run_config) as sess:
+    sess.run(tf.global_variables_initializer())
+    num_steps = 4
+    for step in range(num_steps):
+        sess.run(d_optim, feed_dict = {z: batch_z, image: X_image})
+        sess.run(g_optim, feed_dict = {z: batch_z})
+        
+        # Run g_optim twice to realize loss value
+        if step % 1 == 0:
+            sess.run(g_optim, feed_dict = {z: batch_z})
+            errD_fake = d_loss_fake.eval({z: batch_z })
+            errD_real = d_loss_real.eval({image: X_image })
+            errG = g_loss.eval({z: batch_z})
+            print('step: %d, d_loss: %f, g_loss: %f'%(step, errD_fake+errD_real, errG))
+            
+        # to save image to your local folder
+        # TODO:at line 175, you specify your local folder. Please see details of how to use 'cv2.imwrite'
+        if step % 2 ==0:
+            samples = sess.run(sampler,feed_dict={z: sample_z})
+            col=8
+            rows=[]
+            for i in range(8):
+                rows.append(cv2.hconcat(samples[col * i + 0:col * i + col]))
+                vnari=cv2.vconcat(rows)
+            cv2.imwrite('/Users/hagiharatatsuya/Downloads/sampler.html/sampler%s.png'% step, vnari)
+
+
+
+
