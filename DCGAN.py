@@ -125,12 +125,13 @@ D_logits_ = discriminator(G)   #D(G(z))
 
 
 # In[10]: # loss function
+batch_label=317
 
-d_loss_real = tf.reduce_mean(tf.nn.sparse_softmax_cross_entropy_with_logits(logits=D_logits, labels=tf.ones([317], dtype=tf.int64)))
-d_loss_fake = tf.reduce_mean(tf.nn.sparse_softmax_cross_entropy_with_logits(logits=D_logits_, labels=tf.zeros([317], dtype=tf.int64)))
+d_loss_real = tf.reduce_mean(tf.nn.sparse_softmax_cross_entropy_with_logits(logits=D_logits, labels=tf.ones([batch_label], dtype=tf.int64)))
+d_loss_fake = tf.reduce_mean(tf.nn.sparse_softmax_cross_entropy_with_logits(logits=D_logits_, labels=tf.zeros([batch_label], dtype=tf.int64)))
 
 
-g_loss = tf.reduce_mean(tf.nn.sparse_softmax_cross_entropy_with_logits(logits=D_logits_, labels=tf.ones([317], dtype=tf.int64)))
+g_loss = tf.reduce_mean(tf.nn.sparse_softmax_cross_entropy_with_logits(logits=D_logits_, labels=tf.ones([batch_label], dtype=tf.int64)))
 d_loss = d_loss_real + d_loss_fake
 
 
