@@ -72,7 +72,7 @@ def unpickle(file):
     return data
 
 img_batch= unpickle("62_seen_batch.pickle")
-
+img_batch=img_batch[:317]
 X_image=np.array(img_batch)/ 255
 # shape=(batch_size, 64, 64, 3)
 
