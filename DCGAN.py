@@ -4,6 +4,7 @@
 
 import sys
 import pickle
+import time
 import numpy as np
 import tensorflow as tf
 import _pickle as cPickle
@@ -12,11 +13,11 @@ import matplotlib.pyplot as plt
 import cv2
 
 z = tf.placeholder(tf.float32, [None, 100])
-image = tf.placeholder(tf.float32, [317, 64, 64, 3])
+image = tf.placeholder(tf.float32, [64, 64, 64, 3])
 
 
 sample_z = np.random.uniform(-1, 1, size=(100, 100))
-batch_z = np.random.uniform(-1, 1, [317, 100])
+batch_z = np.random.uniform(-1, 1, [64, 100])
 
 
 def batch_norm(c):
@@ -64,7 +65,6 @@ def unpickle(file):
     return data
 
 img_batch= unpickle("62_seen_batch.pickle")
-img_batch=img_batch[:317]
 X_image=np.array(img_batch)/ 255
 # shape=(batch_size, 64, 64, 3)
 
@@ -72,7 +72,7 @@ X_image=np.array(img_batch)/ 255
 # In[8]:    discriminator, generator and sampler
 
 def discriminator(image):
-    batch_size=300
+    batch_size=64
     with tf.variable_scope("discriminator") as scope:
         h0 = lrelu(conv2d(image, 64, name='d_h0_conv'))
         h1 = lrelu(batch_norm(conv2d(h0, 128, name='d_h1_conv')))
@@ -82,7 +82,7 @@ def discriminator(image):
     
     
 def generator(z_):# shape=(batch_size, 64, 64, 3)
-    batch_size=317
+    batch_size=64
     with tf.variable_scope("generator") as scope:
         # project `z` and reshape
         z= linear(z_, 32*8*4*4)
@@ -117,7 +117,7 @@ D_logits_ = discriminator(G)   #D(G(z))
 
 
 # In[10]: # loss function
-batch_label=317
+batch_label=64
 
 d_loss_real = tf.reduce_mean(tf.nn.sparse_softmax_cross_entropy_with_logits(logits=D_logits, labels=tf.ones([batch_label], dtype=tf.int64)))
 d_loss_fake = tf.reduce_mean(tf.nn.sparse_softmax_cross_entropy_with_logits(logits=D_logits_, labels=tf.zeros([batch_label], dtype=tf.int64)))
@@ -139,26 +139,33 @@ g_optim = tf.train.GradientDescentOptimizer(0.0001).minimize(g_loss, var_list=g_
 
 # In[13]:    # train
 
+gpu_options = tf.GPUOptions(per_process_gpu_memory_fraction=0.333)
 run_config = tf.ConfigProto()
 run_config.gpu_options.allow_growth=True
+
 with tf.Session(config=run_config) as sess:
     sess.run(tf.global_variables_initializer())
-    num_steps = 4
-    for step in range(num_steps):
-        sess.run(d_optim, feed_dict = {z: batch_z, image: X_image})
-        sess.run(g_optim, feed_dict = {z: batch_z})
+    epochs=25
+    for epoch in range(epochs):
+        batch_idxs= min (len(X_image), np.inf) // 64
+        for idx in range (0, batch_idxs):
+            bacth_files= X_image[idx*64:(idx+1)*64]
+            batch = [batch_file for batch_file in bacth_files]
+            batch_images = np.array(batch).astype(np.float32)
+            sess.run(d_optim, feed_dict = {z: batch_z, image: batch_images})
+            sess.run(g_optim, feed_dict = {z: batch_z})
         
-        # Run g_optim twice to realize loss value
-        if step % 1 == 0:
+            # Run g_optim twice to realize loss value
             sess.run(g_optim, feed_dict = {z: batch_z})
             errD_fake = d_loss_fake.eval({z: batch_z })
-            errD_real = d_loss_real.eval({image: X_image })
+            errD_real = d_loss_real.eval({image: batch_images})
             errG = g_loss.eval({z: batch_z})
-            print('step: %d, d_loss: %f, g_loss: %f'%(step, errD_fake+errD_real, errG))
+            print("Epoch: [%2d] [%4d/%4d] time:%4.4f, d_loss: %.8f, g_loss: %.8f" % (epoch, idx, batch_idxs,
+                                                                                         time.time()-start_time, errD_fake+errD_real, errG))
             
         # to save image to your local folder
         # TODO:at line 175, you specify your local folder. Please see details of how to use 'cv2.imwrite'
-        if step % 2 ==0:
+        if epoch % 1 ==0:
             samples = sess.run(sampler,feed_dict={z: sample_z})
             col=8
             rows=[]
