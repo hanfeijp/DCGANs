@@ -171,7 +171,7 @@ with tf.Session(config=run_config) as sess:
         
         # to save image to your local folder
         # TODO:at line 181, you specify your local folder. Please see details of how to use 'cv2.imwrite'
-        if epoch%5==0:
+        if epoch%1==0:
             samples = sess.run(sampler,feed_dict={z: sample_z})
             col=8
             rows=[]
