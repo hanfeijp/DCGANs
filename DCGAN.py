@@ -148,8 +148,6 @@ gpu_options = tf.GPUOptions(per_process_gpu_memory_fraction=0.333)
 run_config = tf.ConfigProto()
 run_config.gpu_options.allow_growth=True
 
-run_config = tf.ConfigProto()
-run_config.gpu_options.allow_growth=True
 start_time=time.time()
 with tf.Session(config=run_config) as sess:
     sess.run(tf.global_variables_initializer())
@@ -172,7 +170,7 @@ with tf.Session(config=run_config) as sess:
                                                                                          time.time()-start_time, errD_fake+errD_real, errG))
         
         # to save image to your local folder
-        # TODO:at line 175, you specify your local folder. Please see details of how to use 'cv2.imwrite'
+        # TODO:at line 181, you specify your local folder. Please see details of how to use 'cv2.imwrite'
         if epoch%1==0:
             samples = sess.run(sampler,feed_dict={z: sample_z})
             col=8
