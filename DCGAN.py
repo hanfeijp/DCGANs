@@ -81,29 +81,34 @@ def discriminator(image):
         return linear(tf.reshape(h3, [batch_size, -1]), 2) # shape=(batch_size, 64, 64, 3)　
     
     
+    
 def generator(z_):# shape=(batch_size, 64, 64, 3)
     batch_size=64
     with tf.variable_scope("generator") as scope:
         # project `z` and reshape
-        z= linear(z_, 32*8*4*4)
-        h0 = tf.nn.relu(batch_norm(tf.reshape(z, [-1, 4, 4, 32*8])))
-        h1 = tf.nn.relu(batch_norm(deconv2d(h0, [batch_size, 8, 8, 32*4], name='g_h1')))
-        h2 = tf.nn.relu(batch_norm(deconv2d(h1, [batch_size, 16, 16, 32*2], name='g_h2')))
-        h3 = tf.nn.relu(batch_norm(deconv2d(h2, [batch_size, 32, 32, 32*1], name='g_h3')))
+        z= linear(z_, 64*8*4*4)
+        h0 = tf.nn.relu(batch_norm(tf.reshape(z, [-1, 4, 4, 64*8])))
+        h1 = tf.nn.relu(batch_norm(deconv2d(h0, [batch_size, 8, 8, 64*4], name='g_h1')))
+        h2 = tf.nn.relu(batch_norm(deconv2d(h1, [batch_size, 16, 16, 64*2], name='g_h2')))
+        h3 = tf.nn.relu(batch_norm(deconv2d(h2, [batch_size, 32, 32, 64*1], name='g_h3')))
         h4 = deconv2d(h3, [batch_size, 64, 64, 3], name='g_h4')
     return tf.nn.tanh(h4)  #shape=(batch_size, 64, 64, 3)
+
+
 
 def sampler(z_):# shape=(batch_size, 64, 64, 3)　
     batch_size=100
     with tf.variable_scope("sampler") as scope:
         # project `z` and reshape
-        z= linear(z_, 32*8*4*4)
-        h0 = tf.nn.relu(batch_norm(tf.reshape(z, [-1, 4, 4, 32*8])))
-        h1 = tf.nn.relu(batch_norm(deconv2d(h0, [batch_size, 8, 8, 32*4], name='g_h1')))
-        h2 = tf.nn.relu(batch_norm(deconv2d(h1, [batch_size, 16, 16, 32*2], name='g_h2')))
-        h3 = tf.nn.relu(batch_norm(deconv2d(h2, [batch_size, 32, 32, 32*1], name='g_h3')))
+        z= linear(z_, 64*8*4*4)
+        h0 = tf.nn.relu(batch_norm(tf.reshape(z, [-1, 4, 4, 64*8])))
+        h1 = tf.nn.relu(batch_norm(deconv2d(h0, [batch_size, 8, 8, 64*4], name='g_h1')))
+        h2 = tf.nn.relu(batch_norm(deconv2d(h1, [batch_size, 16, 16, 64*2], name='g_h2')))
+        h3 = tf.nn.relu(batch_norm(deconv2d(h2, [batch_size, 32, 32, 64*1], name='g_h3')))
         h4 = deconv2d(h3, [batch_size, 64, 64, 3], name='g_h4')
     return tf.nn.tanh(h4)  #shape=(batch_size, 64, 64, 3)
+
+
 
 G=generator(z)  #G(z)
 D_logits = discriminator(image) #D(x)
