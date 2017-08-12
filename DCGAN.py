@@ -143,6 +143,9 @@ gpu_options = tf.GPUOptions(per_process_gpu_memory_fraction=0.333)
 run_config = tf.ConfigProto()
 run_config.gpu_options.allow_growth=True
 
+run_config = tf.ConfigProto()
+run_config.gpu_options.allow_growth=True
+start_time=time.time()
 with tf.Session(config=run_config) as sess:
     sess.run(tf.global_variables_initializer())
     epochs=25
@@ -162,10 +165,10 @@ with tf.Session(config=run_config) as sess:
             errG = g_loss.eval({z: batch_z})
             print("Epoch: [%2d] [%4d/%4d] time:%4.4f, d_loss: %.8f, g_loss: %.8f" % (epoch, idx, batch_idxs,
                                                                                          time.time()-start_time, errD_fake+errD_real, errG))
-            
+        
         # to save image to your local folder
         # TODO:at line 175, you specify your local folder. Please see details of how to use 'cv2.imwrite'
-        if epoch % 1 ==0:
+        if epoch%1==0:
             samples = sess.run(sampler,feed_dict={z: sample_z})
             col=8
             rows=[]
@@ -173,7 +176,4 @@ with tf.Session(config=run_config) as sess:
                 rows.append(cv2.hconcat(samples[col * i + 0:col * i + col]))
                 vnari=cv2.vconcat(rows)
             cv2.imwrite('/Users/hagiharatatsuya/Downloads/sampler.html/sampler%s.png'% step, vnari)
-
-
-
-
+            
