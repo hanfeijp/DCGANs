@@ -4,13 +4,13 @@
 
 import sys
 import pickle
-import time
 import numpy as np
 import tensorflow as tf
-import _pickle as cPickle
 import os
 import matplotlib.pyplot as plt
-import cv2
+import scipy.misc
+import time
+
 
 z = tf.placeholder(tf.float32, [None, 100])
 image = tf.placeholder(tf.float32, [64, 64, 64, 3])
@@ -171,12 +171,11 @@ with tf.Session(config=run_config) as sess:
         
         # to save image to your local folder
         # TODO:at line 181, you specify your local folder. Please see details of how to use 'cv2.imwrite'
-        if epoch%1==0:
+        if epoch%5==0:
             samples = sess.run(sampler,feed_dict={z: sample_z})
             col=8
             rows=[]
             for i in range(8):
-                rows.append(cv2.hconcat(samples[col * i + 0:col * i + col]))
-                vnari=cv2.vconcat(rows)
-            cv2.imwrite('/Users/hagiharatatsuya/Downloads/sampler.html/sampler%s.png'% epoch, vnari)
-           
+                rows.append(np.hstack(samples[col * i + 0:col * i + col]))
+                vnari=np.vstack(rows)
+                scipy.misc.imsave('/Users/hagiharatatsuya/Downloads/sampler.html/sampler%s.png'% (epoch), vnari)
