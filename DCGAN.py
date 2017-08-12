@@ -179,4 +179,4 @@ with tf.Session(config=run_config) as sess:
                 rows.append(cv2.hconcat(samples[col * i + 0:col * i + col]))
                 vnari=cv2.vconcat(rows)
             cv2.imwrite('/Users/hagiharatatsuya/Downloads/sampler.html/sampler%s.png'% epoch, vnari)
-            
+           
