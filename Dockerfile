@@ -11,7 +11,7 @@ RUN apt-get -y install python3-pip curl
 
 # SELECT CPU or GPU
 #RUN pip3 install keras tensorflow-gpu jupyter opencv-python
-RUN pip3 install keras tensorflow jupyter opencv-python
+RUN pip3 install keras tensorflow jupyter opencv-python pillow
 
 RUN pip3 install --upgrade pip
 RUN apt-get -y install python3.5 python3.5-dev
