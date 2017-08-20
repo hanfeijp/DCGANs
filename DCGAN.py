@@ -10,6 +10,8 @@ import os
 import matplotlib.pyplot as plt
 import time
 
+import tensorflow.contrib.slim as slim
+
 
 z = tf.placeholder(tf.float32, [64, 100])
 image = tf.placeholder(tf.float32, [64, 64, 64, 3])
@@ -17,6 +19,11 @@ image = tf.placeholder(tf.float32, [64, 64, 64, 3])
 
 sample_z = np.random.uniform(-1, 1, size=(64, 100))
 batch_z = np.random.uniform(-1, 1, [64, 100])
+
+
+def show_variables():
+    model_vars = tf.trainable_variables()
+    slim.model_analyzer.analyze_vars(model_vars, print_info=True)
 
 
 
@@ -222,6 +229,10 @@ with tf.Session(config=run_config) as sess:
     counter=1
     epochs=3
     start_time=time.time()
+    show_variables()
+    
+    
+    
     for epoch in range(epochs):
         batch_idxs= min (len(X_image), np.inf) // 64
         for idx in range (0, batch_idxs):
@@ -253,4 +264,3 @@ with tf.Session(config=run_config) as sess:
                 vnari=np.vstack(rows)
                 plt.imshow(vnari)
                 plt.show()
-
