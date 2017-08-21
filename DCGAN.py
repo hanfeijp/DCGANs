@@ -101,7 +101,7 @@ def unpickle(file):
 test= unpickle("train_image.pickle")
 
 
-X_image=np.array(test)/127.5 - 1
+X_image=np.array(test)/255
 X_image.shape
 
 
