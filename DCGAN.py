@@ -1,6 +1,7 @@
 # coding: utf-8
 
-# In[1]:  # build model
+# In[1]: # build model
+
 
 import sys
 import pickle
@@ -8,12 +9,13 @@ import numpy as np
 import tensorflow as tf
 import os
 import matplotlib.pyplot as plt
+import scipy.misc
 import time
 
 import tensorflow.contrib.slim as slim
 
 
-z = tf.placeholder(tf.float32, [64, 100])
+z = tf.placeholder(tf.float32, [None, 100])
 image = tf.placeholder(tf.float32, [64, 64, 64, 3])
 
 
@@ -21,12 +23,13 @@ sample_z = np.random.uniform(-1, 1, size=(64, 100))
 batch_z = np.random.uniform(-1, 1, [64, 100])
 
 
+
 def show_variables():
     model_vars = tf.trainable_variables()
     slim.model_analyzer.analyze_vars(model_vars, print_info=True)
-
-
-
+    
+    
+    
 def batch_norm(x, name, train=True):
     with tf.variable_scope(name):
         return tf.contrib.layers.batch_norm(x,
@@ -36,7 +39,8 @@ def batch_norm(x, name, train=True):
                       scale=True,
                       is_training=train,
                       scope=name)
-
+    
+    
 
 def conv2d(input_, output_dim, name="conv2d"):
     with tf.variable_scope(name):
@@ -64,18 +68,6 @@ def linear(input_, output_size,scope=None, with_w=False):
 
 
 
-def linear_d(input_, output_size,scope=None, with_w=False):
-    shape = input_.get_shape().as_list()
-    with tf.variable_scope(scope or "Linear"):
-        matrix = tf.get_variable("Matrix", [shape[1], output_size], tf.float32, tf.random_normal_initializer(stddev=0.02))
-        bias = tf.get_variable("bias", [output_size], initializer=tf.constant_initializer(0.0))
-        if with_w:
-            return tf.nn.bias_add(tf.matmul(input_, matrix), bias), matrix, bias
-        else:
-            return tf.nn.bias_add(tf.matmul(input_, matrix), bias)
-
-
-
 
 def deconv2d(input_, output_shape, name="deconv2d", with_w=False):
     with tf.variable_scope(name):
@@ -89,9 +81,11 @@ def deconv2d(input_, output_shape, name="deconv2d", with_w=False):
         else:
             return deconv
 
+       
 
 
-# In[2]:  # read image form pickle file
+# In[2]: # read image form pickle file
+
 
 def unpickle(file):
     fp = open(file, 'rb')
@@ -107,11 +101,12 @@ def unpickle(file):
 test= unpickle("train_image.pickle")
 
 
-X_image=np.array(test)/127.5 - 1
+X_image=np.array(test)/ 255
 X_image.shape
 
 
 # In[3]: # discriminator, generator and sampler
+
 
 def discriminator():
     reuse = False
@@ -123,10 +118,11 @@ def discriminator():
             h1 = lrelu(batch_norm(conv2d(h0, 128, name='d_h1_conv'),'d_bn1'))
             h2 = lrelu(batch_norm(conv2d(h1, 256, name='d_h2_conv'),'d_bn2'))
             h3 = lrelu(batch_norm(conv2d(h2, 512, name='d_h3_conv'),'d_bn3'))  # shape=(batch_size, 64, 64, 3)　
-            h4 = linear_d(tf.reshape(h3, [batch_size, -1]),2,'d_h4_lin')
+            h4 = linear(tf.reshape(h3, [batch_size, -1]),1,'d_h4_lin')
         reuse = True
-        return h4
+        return tf.nn.sigmoid(h4), h4
     return model
+
     
 
                     
@@ -152,6 +148,8 @@ def generator():
     return model
 
 
+
+
 def sampler():# shape=(batch_size, 64, 64, 3)　
     reuse = True
     def model(z_):
@@ -172,50 +170,48 @@ def sampler():# shape=(batch_size, 64, 64, 3)　
     return model
 
 
+
+
 g = generator()
 d = discriminator()
 s = sampler()
 
 
-
-# In[4]:
-
 G=g(z)  #G(z)
-D_logits = d(image) #D(x)
-D_logits_ = d(G)   #D(G(z))
-
-
-# In[5]:
+D, D_logits = d(image) #D(x)
 
 sampler = s(z)
+D_, D_logits_ = d(G)   #D(G(z))
 
 
-# In[5]:  # loss function
+# In[4]: # loss function
 
-batch_label=64
 
-d_loss_real = tf.reduce_mean(tf.nn.sparse_softmax_cross_entropy_with_logits(logits=D_logits, labels=tf.ones([batch_label], dtype=tf.int64)))
-d_loss_fake = tf.reduce_mean(tf.nn.sparse_softmax_cross_entropy_with_logits(logits=D_logits_, labels=tf.zeros([batch_label], dtype=tf.int64)))
 
-g_loss = tf.reduce_mean(tf.nn.sparse_softmax_cross_entropy_with_logits(logits=D_logits_, labels=tf.ones([batch_label], dtype=tf.int64)))
+
+d_loss_fake = tf.reduce_mean(tf.nn.sigmoid_cross_entropy_with_logits(logits=D_logits_, labels=tf.zeros_like(D_))
+d_loss_real = tf.reduce_mean(tf.nn.sigmoid_cross_entropy_with_logits(logits=D_logits, labels=tf.ones_like(D)))
+g_loss = tf.reduce_mean(tf.nn.sigmoid_cross_entropy_with_logits(logits=D_logits_, labels=tf.ones_like(D_)))
+
 d_loss = d_loss_real + d_loss_fake
 
 
+# In[5]:  # optim
 
-# In[6]: # optim
 
 d_vars = [var for var in tf.trainable_variables() if 'd_' in var.name]
 g_vars = [var for var in tf.trainable_variables() if 'g_' in var.name]
 
 saver=tf.train.Saver()
-
+                             
+                             
 
 g_optim = tf.train.AdamOptimizer(learning_rate=0.0002, beta1=0.5).minimize(g_loss, var_list=g_vars)
 d_optim = tf.train.AdamOptimizer(learning_rate=0.0002, beta1=0.5).minimize(d_loss, var_list=d_vars)
 
 
+# In[ ]: # train
 
-# In[10]:  # train
 
 run_config = tf.ConfigProto()
 run_config.gpu_options.allow_growth=True
@@ -227,11 +223,9 @@ with tf.Session(config=run_config) as sess:
     sample_images = np.array(sample).astype(np.float32)
     
     counter=1
-    epochs=3
+    epochs=100
     start_time=time.time()
     show_variables()
-    
-    
     
     for epoch in range(epochs):
         batch_idxs= min (len(X_image), np.inf) // 64
@@ -251,6 +245,7 @@ with tf.Session(config=run_config) as sess:
             counter += 1
             print("Epoch: [%2d] [%4d/%4d] time:%4.4f, d_loss: %.8f, g_loss: %.8f" % (epoch, idx, batch_idxs,
                                                                                          time.time()-start_time, errD_fake+errD_real, errG))
+            
             # show sample image while traing
             if np.mod(counter, 30)==1:
                 samples, d_loss_sample, g_loss_sample = sess.run([sampler, d_loss, g_loss],
