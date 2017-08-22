@@ -246,7 +246,7 @@ with tf.Session(config=run_config) as sess:
             print("Epoch: [%2d] [%4d/%4d] time:%4.4f, d_loss: %.8f, g_loss: %.8f" % (epoch, idx, batch_idxs,
                                                                                          time.time()-start_time, errD_fake+errD_real, errG))
             
-            # show sample image while traing
+            # show sample image while trainig
             if np.mod(counter, 30)==1:
                 samples, d_loss_sample, g_loss_sample = sess.run([sampler, d_loss, g_loss],
                                                feed_dict={z: sample_z, image: sample_images})
