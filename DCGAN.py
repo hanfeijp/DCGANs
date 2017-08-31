@@ -1,8 +1,3 @@
-# coding: utf-8
-
-# In[1]: # build model
-
-
 import sys
 import pickle
 import numpy as np
