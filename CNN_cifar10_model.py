@@ -1,8 +1,3 @@
-# coding: utf-8
-
-# In[9]:
-
-
 from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
@@ -35,14 +30,6 @@ def _generate_image_and_label_batch(image, label, min_queue_examples, batch_size
 
 
 # In[10]:
-
-
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-
-import os
-import tensorflow as tf
 def distorted_inputs(data_dir):
     
     filenames = [os.path.join(data_dir, 'data_batch_1')]  #['train_batch.pickle']
@@ -61,7 +48,7 @@ def distorted_inputs(data_dir):
     float_image = tf.image.per_image_standardization(distorted_image) # <tf.Tensor 'div:0' shape=(96, 96, 3) dtype=float32>
     float_image.set_shape([height, width, 3]) # 'div_2:0' shape=(96, 96, 3)
     read_input.label.set_shape([1]) # <__main__.read_cifar10.<locals>.CIFAR10Record at 0x1136ab278>
-    min_queue_examples = int(10000 *0.4) # 12000
+    min_queue_examples = int(10000 *0.4) # 4000
 
     # Filling queue with 12000 CIFAR images before starting to train. This will take a few minutes.
     # shuffle_batch:0' shape=(128, 96, 96, 3) dtype=float32>, shape=(128,) dtype=int32>)
@@ -102,15 +89,15 @@ def read_cifar10(filename_queue):
 
 def inputs(data_dir):
     """Construct input for evaluation using the Reader ops."""
-    filenames = [os.path.join('test_batch')]
+    filenames = [os.path.join(data_dir, 'test_batch')]
     num_examples_per_epoch = 10000
     
     filename_queue = tf.train.string_input_producer(filenames)
     
     read_input = read_cifar10(filename_queue)
     reshaped_image = tf.cast(read_input.uint8image, tf.float32)
-    height = 96
-    width = 96
+    height = 24
+    width = 24
     resized_image = tf.image.resize_image_with_crop_or_pad(reshaped_image, height, width)
     float_image = tf.image.per_image_standardization(resized_image)
 
