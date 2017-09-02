@@ -7,110 +7,40 @@ import time
 import tensorflow as tf
 import os
 
-def _generate_image_and_label_batch(image, label, min_queue_examples, batch_size, shuffle):
-    num_preprocess_threads = 16
-    if shuffle:
-        images, label_batch = tf.train.shuffle_batch(
-        [image, label],
-        batch_size=batch_size,
-        num_threads=num_preprocess_threads,
-        capacity=min_queue_examples + 3 * batch_size,
-        min_after_dequeue=min_queue_examples)
+# read data from file
+
+def inputs_(filename, distorted=False):
+    file_name_queue = tf.train.string_input_producer([filename])
+    reader = tf.TFRecordReader()
+    _, serialized_examples = reader.read(file_name_queue)
+    
+    feature = tf.parse_single_example(serialized_examples, features={"label": tf.FixedLenFeature([], tf.int64),
+          "image": tf.FixedLenFeature([], tf.string)}) 
+    
+    img = tf.reshape(tf.decode_raw(feature["image"], tf.uint8), tf.stack([32, 32, 3]))
+    imgs = tf.cast(img, tf.float32)
+    if distorted:
+        image = tf.image.random_flip_left_right(imgs)
+        image = tf.image.random_brightness(image, max_delta=0.4)
+        image = tf.image.random_contrast(image, lower=0.6, upper=1.4)
+        image = tf.image.random_hue(image, max_delta=0.04)
+        float_image = tf.image.random_saturation(image, lower=0.6, upper=1.4)
     else:
-        images, label_batch = tf.train.batch(
-        [image, label],
-        batch_size=batch_size,
+        float_image = tf.image.per_image_standardization(imgs)
+    
+    label = tf.cast(feature["label"], tf.int32)
+    min_queue_examples = int(10000 *0.4) # 1200
+    num_preprocess_threads = 16
+    images, label_batch = tf.train.shuffle_batch([float_image, label],
+        batch_size=128,
         num_threads=num_preprocess_threads,
-        capacity=min_queue_examples + 3 * batch_size)
-
-    # Display the training images in the visualizer.
-    tf.summary.image('images', images)
-
-    return images, tf.reshape(label_batch, [batch_size])
+        capacity=min_queue_examples + 3 * 128,
+        min_after_dequeue=min_queue_examples)
+    return images, label_batch
 
 
-# In[10]:
-def distorted_inputs(data_dir):
-    
-    filenames = [os.path.join(data_dir, 'data_batch_1')]  #['train_batch.pickle']
-    filename_queue = tf.train.string_input_producer(filenames)  #<tensorflow.python.ops.data_flow_ops.FIFOQueue at 0x112bf93c8>
-    
-    read_input = read_cifar10(filename_queue) # <__main__.read_cifar10.<locals>.CIFAR10Record at 0x112df2ef0>
-    reshaped_image = tf.cast(read_input.uint8image, tf.float32) # <tf.Tensor 'Cast_9:0' shape=(128, 128, 3) dtype=float32>
-    
-    height = 24
-    width = 24
-    distorted_image = tf.random_crop(reshaped_image, [height, width, 3]) # <tf.Tensor 'random_crop:0' shape=(96, 96, 3) dtype=float32>
-    distorted_image = tf.image.random_flip_left_right(distorted_image) # <tf.Tensor 'cond/Merge:0' shape=(96, 96, 3) dtype=float32>
-    distorted_image = tf.image.random_brightness(distorted_image, max_delta=63) # 'adjust_brightness/Identity_1:0' shape=(96, 96, 3)
-    distorted_image = tf.image.random_contrast(distorted_image, lower=0.2, upper=1.8) # 'adjust_contrast/Identity_1:0' shape=(96, 96, 3)
-    
-    float_image = tf.image.per_image_standardization(distorted_image) # <tf.Tensor 'div:0' shape=(96, 96, 3) dtype=float32>
-    float_image.set_shape([height, width, 3]) # 'div_2:0' shape=(96, 96, 3)
-    read_input.label.set_shape([1]) # <__main__.read_cifar10.<locals>.CIFAR10Record at 0x1136ab278>
-    min_queue_examples = int(10000 *0.4) # 4000
 
-    # Filling queue with 12000 CIFAR images before starting to train. This will take a few minutes.
-    # shuffle_batch:0' shape=(128, 96, 96, 3) dtype=float32>, shape=(128,) dtype=int32>)
-    return _generate_image_and_label_batch(float_image, read_input.label, min_queue_examples, 128, shuffle=True)  
-       
-
-
-# In[11]:
-
-
-def read_cifar10(filename_queue):
-    class CIFAR10Record(object):
-        pass
-    result = CIFAR10Record()
-    
-    label_bytes = 1  # 2 for CIFAR-100
-    result.height = 32
-    result.width = 32
-    result.depth = 3
-    image_bytes = result.height * result.width * result.depth # 49152
-  
-    record_bytes = label_bytes + image_bytes
-    reader = tf.FixedLengthRecordReader(record_bytes=record_bytes) # #<tensorflow.python.ops.io_ops.FixedLengthRecordReader at 0x112c44128>
-    result.key, value = reader.read(filename_queue) # # key:<tf.Tensor 'ReaderReadV2:0' shape=() dtype=string> vaule:ReaderReadV2:1'
-
-    record_bytes = tf.decode_raw(value, tf.uint8) # <tf.Tensor 'DecodeRaw:0' shape=(?,) dtype=uint8>
-    result.label = tf.cast(tf.strided_slice(record_bytes, [0], [label_bytes]), tf.int32) # # <tf.Tensor 'Cast:0' shape=(?,) dtype=int32>
-
-    depth_major = tf.reshape(tf.strided_slice(record_bytes, [label_bytes],
-                       [label_bytes + image_bytes]),[result.depth, result.height, result.width]) # # <tf.Tensor 'Reshape:0' shape=(3, 128, 128) dtype=uint8>
-    result.uint8image = tf.transpose(depth_major, [1, 2, 0]) # <tf.Tensor 'transpose_1:0' shape=(128, 128, 3) dtype=uint8>
-
-    return result
-
-
-# In[21]:
-
-
-def inputs(data_dir):
-    """Construct input for evaluation using the Reader ops."""
-    filenames = [os.path.join(data_dir, 'test_batch')]
-    num_examples_per_epoch = 10000
-    
-    filename_queue = tf.train.string_input_producer(filenames)
-    
-    read_input = read_cifar10(filename_queue)
-    reshaped_image = tf.cast(read_input.uint8image, tf.float32)
-    height = 24
-    width = 24
-    resized_image = tf.image.resize_image_with_crop_or_pad(reshaped_image, height, width)
-    float_image = tf.image.per_image_standardization(resized_image)
-
-    float_image.set_shape([height, width, 3])
-    read_input.label.set_shape([1])
-
-    min_queue_examples = int(num_examples_per_epoch*0.4)
-
-   # Generate a batch of images and labels by building up a queue of examples.
-    return _generate_image_and_label_batch(float_image, read_input.label, min_queue_examples, 128, shuffle=False)
-
-
-# In[13]:
+# In[2]: # CNN inference
 
 
 def cnn(x):
@@ -125,7 +55,7 @@ def cnn(x):
     def _activation_summary(x):
         tensor_name = x.op.name
         tf.summary.scalar(tensor_name + '/sparsity', tf.nn.zero_fraction(x))
-
+        
     with tf.variable_scope('conv1') as scope:
         kernel = tf.get_variable('weights', shape=[3, 3, 3, 32], initializer=tf.truncated_normal_initializer(stddev=0.1))
         conv = tf.nn.conv2d(x, kernel, [1, 1, 1, 1], padding='SAME')
@@ -175,6 +105,7 @@ def cnn(x):
         biases = tf.get_variable('biases', shape=[1024], initializer=tf.constant_initializer(0.0))
         fc5 = tf.nn.relu(tf.nn.bias_add(tf.matmul(reshape, weights), biases), name='fc5')
         _activation_summary(fc5)
+                
 
     with tf.variable_scope('fc6') as scope:
         weights = _variable_with_weight_decay('weights', shape=[1024, 256], stddev=0.02, wd=0.005)
@@ -187,11 +118,11 @@ def cnn(x):
         biases = tf.get_variable('biases', shape=[10], initializer=tf.constant_initializer(0.0))
         fc7 = tf.nn.bias_add(tf.matmul(fc6, weights), biases, name='fc7')
         _activation_summary(fc7)
-
     return fc7   #shape=(BATCH_SIZE, 3)
+    
 
 
-# In[14]:
+# In[3]: # loss
 
 
 def loss(logits, labels):
@@ -203,7 +134,7 @@ def loss(logits, labels):
 
 
 
-# In[15]:
+# In[4]: # training
 
 
 def train(total_loss, global_step):
@@ -233,15 +164,17 @@ def train(total_loss, global_step):
     return train_op #op for training.
 
 
-# In[22]:
+# In[5]: # sess run
 
 
 with tf.Graph().as_default():
     global_step = tf.contrib.framework.get_or_create_global_step()
-    images, labels = inputs('/Users/hagiharatatsuya/Downloads/cifar-10-batches-py/')
-    c_logits = cnn(images)
-    loss = loss(c_logits, labels)
+    # for train
+    train_image, train_label = inputs_('/Users/hagiharatatsuya/Downloads/train.tfrecords', distorted=True)
+    c_logits = cnn(train_image)
+    loss = loss(c_logits, train_label)
     train_op = train(loss, global_step)
+    
     class _LoggerHook(tf.train.SessionRunHook):
         def begin(self):
             self._step = -1
@@ -259,17 +192,15 @@ with tf.Graph().as_default():
 
                 loss_value = run_values.results
                 examples_per_sec = 10 * 128 / duration
-                sec_per_batch = float(duration / FLAGS.log_frequency)
+                sec_per_batch = float(duration / 10)
 
                 format_str = ('%s: step %d, loss = %.2f (%.1f examples/sec; %.3f '
                         'sec/batch)')
-            print (format_str % (datetime.now(), self._step, loss_value,
+                print (format_str % (datetime.now(), self._step, loss_value,
                                examples_per_sec, sec_per_batch))
-
-    with tf.train.MonitoredTrainingSession(hooks=[tf.train.StopAtStepHook(last_step=1000),
-               tf.train.NanTensorHook(loss),
-               _LoggerHook()],
-        config=tf.ConfigProto(
-            log_device_placement=False)) as mon_sess:
+    # checkpoint_dir must be directory
+    with tf.train.MonitoredTrainingSession(checkpoint_dir='/Users/hagiharatatsuya/Downloads/check_point',
+                                           hooks=[tf.train.StopAtStepHook(last_step=1000),
+               tf.train.NanTensorHook(loss), _LoggerHook()], config=tf.ConfigProto(log_device_placement=False)) as mon_sess:
         while not mon_sess.should_stop():
             mon_sess.run(train_op)
