@@ -3,11 +3,15 @@ from __future__ import division
 from __future__ import print_function
 
 from datetime import datetime
+
 import time
 import tensorflow as tf
 import os
+import math
+import numpy as np
 
-# read data from file
+
+# read data to input queue
 
 def inputs_(filename, distorted=False):
     file_name_queue = tf.train.string_input_producer([filename])
@@ -29,7 +33,7 @@ def inputs_(filename, distorted=False):
         float_image = tf.image.per_image_standardization(imgs)
     
     label = tf.cast(feature["label"], tf.int32)
-    min_queue_examples = int(10000 *0.4) # 1200
+    min_queue_examples = int(50000 *0.4) # 1200
     num_preprocess_threads = 16
     images, label_batch = tf.train.shuffle_batch([float_image, label],
         batch_size=128,
@@ -40,7 +44,7 @@ def inputs_(filename, distorted=False):
 
 
 
-# In[2]: # CNN inference
+# In[2]: CNN inference
 
 
 def cnn(x):
@@ -118,7 +122,7 @@ def cnn(x):
         biases = tf.get_variable('biases', shape=[10], initializer=tf.constant_initializer(0.0))
         fc7 = tf.nn.bias_add(tf.matmul(fc6, weights), biases, name='fc7')
         _activation_summary(fc7)
-    return fc7   #shape=(BATCH_SIZE, 3)
+    return fc7   # shape=(BATCH_SIZE, 3)
     
 
 
@@ -127,14 +131,15 @@ def cnn(x):
 
 def loss(logits, labels):
     labels = tf.cast(labels, tf.int64)
-    cross_entropy_mean = tf.reduce_mean(tf.nn.sparse_softmax_cross_entropy_with_logits(logits=logits, labels=labels, name='cross_entropy'))
+    cross_entropy_mean = tf.reduce_mean(tf.nn.sparse_softmax_cross_entropy_with_logits(logits=logits,
+                                                                                       labels=labels, name='cross_entropy'))
     tf.add_to_collection('losses', cross_entropy_mean)
     # The total loss is defined as the cross entropy loss plus all of the weight(L2 loss)
     return tf.add_n(tf.get_collection('losses'), name='total_loss')
 
 
 
-# In[4]: # training
+# In[4]: # return train_op
 
 
 def train(total_loss, global_step):
@@ -143,8 +148,8 @@ def train(total_loss, global_step):
 
     loss_averages_op = loss_averages.apply(losses + [total_loss]) #op for generating moving averages of losses.
     # Variables that affect learning rate.
-    num_batches_per_epoch = 10000 / 128
-    decay_steps = int(num_batches_per_epoch * 10000)
+    num_batches_per_epoch = 50000 / 128
+    decay_steps = int(num_batches_per_epoch * 50000)
     lr = tf.train.exponential_decay(0.1, global_step, decay_steps, 0.1, staircase=True)
     # Compute gradients.
     with tf.control_dependencies([loss_averages_op]):
@@ -161,16 +166,17 @@ def train(total_loss, global_step):
     with tf.control_dependencies([apply_gradient_op, variables_averages_op]):
         train_op = tf.no_op(name='train')
 
-    return train_op #op for training.
+    return train_op # op for training.
 
 
-# In[5]: # sess run
+# In[ ]: # training
 
 
 with tf.Graph().as_default():
     global_step = tf.contrib.framework.get_or_create_global_step()
-    # for train
-    train_image, train_label = inputs_('/Users/hagiharatatsuya/Downloads/train.tfrecords', distorted=True)
+    
+    train_image, train_label = inputs_('/Users/hagiharatatsuya/Downloads/cifar_train.tfrecords',
+                                       distorted=True)
     c_logits = cnn(train_image)
     loss = loss(c_logits, train_label)
     train_op = train(loss, global_step)
@@ -200,7 +206,8 @@ with tf.Graph().as_default():
                                examples_per_sec, sec_per_batch))
     # checkpoint_dir must be directory
     with tf.train.MonitoredTrainingSession(checkpoint_dir='/Users/hagiharatatsuya/Downloads/check_point',
-                                           hooks=[tf.train.StopAtStepHook(last_step=1000),
-               tf.train.NanTensorHook(loss), _LoggerHook()], config=tf.ConfigProto(log_device_placement=False)) as mon_sess:
+                                           hooks=[tf.train.StopAtStepHook(last_step=5000),
+               tf.train.NanTensorHook(loss), _LoggerHook()],
+                                           config=tf.ConfigProto(log_device_placement=False)) as mon_sess:
         while not mon_sess.should_stop():
             mon_sess.run(train_op)
