@@ -254,3 +254,6 @@ with tf.Session(config=run_config) as sess:
                 vnari=np.vstack(rows)
                 plt.imshow(vnari)
                 plt.show()
+            # save sess to directory
+            if np.mod(counter, 2)==1:
+                saver.save(sess, "/Users/hagiharatatsuya/Downloads/dcgan_dir/decgan")
