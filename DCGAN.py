@@ -101,7 +101,13 @@ X_image.shape
 
 
 # In[3]: # discriminator, generator and sampler
-
+# TO DO : to reduce amount of calculation, you change generator as well as sampler like this
+#z, h0_w, h0_b = linear(z_, g_fc*8*8*4, 'g_h0_lin',with_w=True)
+            #h0 = tf.nn.relu(batch_norm(tf.reshape(z, [-1, 8, 8, g_fc*4]), 'g_bn0'))
+            #h1, h1_w, h1_b = deconv2d(h0, [batch_size, 16, 16, g_fc*3], name='g_h1', with_w=True
+            #h2, h2_w, h2_b = deconv2d(h1, [batch_size, 32, 32, g_fc*2], name='g_h2', with_w=True)
+            #h3, h3_w, h3_b = deconv2d(h2, [batch_size, 64, 64, g_fc*1], name='g_h3', with_w=True)
+         
 
 def discriminator():
     reuse = False
