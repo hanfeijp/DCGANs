@@ -52,7 +52,7 @@ def distorted_inputs(data_dir, batch_size):
     return images, tf.reshape(label_batch, [batch_size])
 
 
-# In[2]: # CNN like VGGnet which is NN for classifying images NN
+# In[2]: # CNN like VGGnet which is NN for classifying images
 
 
 def cnn(x):
