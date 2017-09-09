@@ -12,52 +12,9 @@ import numpy as np
 
 
 
-def read_cifar10(filename_queue):
-    reader = tf.TFRecordReader()
-    _, serialized_example = reader.read(filename_queue)
-    features = tf.parse_single_example(
-      serialized_example,
-      features={
-          "label": tf.FixedLenFeature([], tf.int64),
-          "image": tf.FixedLenFeature([], tf.string)
-      })
-    label = tf.cast(features["label"], tf.int32)
-    imgin = tf.reshape(tf.decode_raw(features["image"], tf.uint8),
-                           tf.stack([32, 32, 3]))
-    
-    return imgin,label
-
-
-  
-
-def _generate_image_and_label_batch(image, label, min_queue_examples,
-                                    batch_size, shuffle):
-    num_preprocess_threads = 16
-    if shuffle:
-        images, label_batch = tf.train.shuffle_batch(
-        [image, label],
-        batch_size=batch_size,
-        num_threads=num_preprocess_threads,
-        capacity=min_queue_examples + 3 * batch_size,
-        min_after_dequeue=min_queue_examples)
-    else:
-        images, label_batch = tf.train.batch(
-        [image, label],
-        batch_size=batch_size,
-        num_threads=num_preprocess_threads,
-        capacity=min_queue_examples + 3 * batch_size)
-
-    # Display the training images in the visualizer.
-    tf.summary.image('images', images)
-
-    return images, tf.reshape(label_batch, [batch_size])
-
-
-
-
 def inputs(data_dir, batch_size):
     filenames = [os.path.join(data_dir)]
-    num_examples_per_epoch = 10000
+    num_examples_per_epoch = 350
 
     for f in filenames:
         if not tf.gfile.Exists(f):
@@ -65,28 +22,29 @@ def inputs(data_dir, batch_size):
 
     # Create a queue that produces the filenames to read.
     filename_queue = tf.train.string_input_producer(filenames)
-
-    # Read examples from files in the filename queue.
-    image, label = read_cifar10(filename_queue)
-    reshaped_image = tf.cast(image, tf.float32)
-
-    height = 24
-    width = 24
-
-    resized_image = tf.image.resize_image_with_crop_or_pad(reshaped_image,
-                                                         height, width)
+    reader = tf.TFRecordReader()
+    _, serialized_example = reader.read(filename_queue)
+    features = tf.parse_single_example(serialized_example,
+      features={"label": tf.FixedLenFeature([], tf.int64),
+          "image": tf.FixedLenFeature([], tf.string)})
+    label = tf.cast(features["label"], tf.int32)
+    imgin = tf.reshape(tf.decode_raw(features["image"], tf.uint8), tf.stack([128, 128, 3]))
+    
+    reshaped_image = tf.cast(imgin, tf.float32)
+    height = 96
+    width = 96
+    resized_image = tf.image.resize_image_with_crop_or_pad(reshaped_image, height, width)
     float_image = tf.image.per_image_standardization(resized_image)
-
-    # Set the shapes of tensors.
     float_image.set_shape([height, width, 3])
 
-    # Ensure that the random shuffling has good mixing properties.
     min_fraction_of_examples_in_queue = 0.4
-    min_queue_examples = int(num_examples_per_epoch *
-                           min_fraction_of_examples_in_queue)
-    return _generate_image_and_label_batch(float_image, label,
-                                         min_queue_examples, batch_size,
-                                         shuffle=False)
+    min_queue_examples = int(num_examples_per_epoch*min_fraction_of_examples_in_queue)
+    
+    num_preprocess_threads = 16
+    images, label_batch = tf.train.batch([float_image, label], batch_size=batch_size,
+        num_threads=num_preprocess_threads,capacity=min_queue_examples + 3 * batch_size)
+    
+    return images, tf.reshape(label_batch, [batch_size])
 
 
 # In[2]:
