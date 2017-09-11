@@ -261,3 +261,65 @@ with tf.Session(config=run_config) as sess:
             # save sess to directory
             if np.mod(counter, 2)==1:
                 saver.save(sess, "/Users/hagiharatatsuya/Downloads/dcgan_dir/decgan")
+                             
+                             
+                  
+# In[ ]: # Restoring　session from directory and move again                            
+                                               
+def move_once(saver):
+    with tf.Session() as sess:
+        ckpt = tf.train.get_checkpoint_state('/Users/hagiharatatsuya/Downloads/dcgan_dir')
+        if ckpt and ckpt.model_checkpoint_path:
+            # Restores from checkpoint
+            saver.restore(sess, ckpt.model_checkpoint_path)
+        else:
+            print('No checkpoint file found')
+            return
+        
+        sample_files=X_image[0:64]
+        sample = [sample_file for sample_file in sample_files]
+        sample_images = np.array(sample).astype(np.float32)
+    
+        counter=1
+        epochs=1
+        start_time=time.time()
+        show_variables()
+    
+        for epoch in range(epochs):
+            batch_idxs= min (len(X_image), np.inf) // 64
+            for idx in range (0, batch_idxs):
+                bacth_files= X_image[idx*64:(idx+1)*64]
+                batch = [batch_file for batch_file in bacth_files]
+                batch_images = np.array(batch).astype(np.float32)
+            
+                sess.run(d_optim, feed_dict = {z: batch_z, image: batch_images})
+                sess.run(g_optim, feed_dict = {z: batch_z})
+        
+                # Run g_optim twice to realize loss value
+                sess.run(g_optim, feed_dict = {z: batch_z})
+                errD_fake = d_loss_fake.eval({z: batch_z })
+                errD_real = d_loss_real.eval({image: batch_images})
+                errG = g_loss.eval({z: batch_z})
+                counter += 1
+                print("Epoch: [%2d] [%4d/%4d] time:%4.4f, d_loss: %.8f, g_loss: %.8f" % (epoch, idx, batch_idxs,
+                                                                                         time.time()-start_time, errD_fake+errD_real, errG))
+                if np.mod(counter, 10)==1:
+                    samples, d_loss_sample, g_loss_sample = sess.run([sampler, d_loss, g_loss],
+                                               feed_dict={z: sample_z, image: sample_images})
+                
+                    print("[Sample] d_loss:%.8f, g_loss:%.8f" % (d_loss_sample, g_loss_sample))
+                    col=8
+                    rows=[]
+                    for i in range(8):
+                        rows.append(np.hstack(samples[col * i + 0:col * i + col]))
+                    vnari=np.vstack(rows)
+                    plt.imshow(vnari)
+                    plt.show()
+                if np.mod(counter, 10)==1:
+                    saver.save(sess, '/Users/hagiharatatsuya/Downloads/dcgan_dir/ckpt')
+
+                             
+# In[ ]:  
+                             
+saver = tf.train.Saver()
+move_once(saver)
