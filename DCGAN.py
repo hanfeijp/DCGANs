@@ -202,18 +202,16 @@ d_loss = d_loss_real + d_loss_fake
 
 d_vars = [var for var in tf.trainable_variables() if 'd_' in var.name]
 g_vars = [var for var in tf.trainable_variables() if 'g_' in var.name]
-
-saver=tf.train.Saver()
                              
                              
-
 g_optim = tf.train.AdamOptimizer(learning_rate=0.0002, beta1=0.5).minimize(g_loss, var_list=g_vars)
 d_optim = tf.train.AdamOptimizer(learning_rate=0.0002, beta1=0.5).minimize(d_loss, var_list=d_vars)
 
 
+
 # In[ ]: # train
 
-
+saver=tf.train.Saver()
 run_config = tf.ConfigProto()
 run_config.gpu_options.allow_growth=True
 
