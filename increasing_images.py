@@ -157,13 +157,29 @@ ganma3=[]
 for i in img_batch:
     ganma3.append(cv2.LUT(i, look_up_table4))
 
+    
+# In[82]: # shifting and rotation (change value to use many times)
 
+
+rad=np.pi/90 # circumference ratio
+# distance to move to x-axis
+move_x = 0
+# distance to move to x-axis
+move_y = 96 * -0.000000005
+ 
+matrix = [[np.cos(rad),  -1 * np.sin(rad), move_x], [np.sin(rad),   np.cos(rad), move_y]]
+ 
+affine_matrix3 = np.float32(matrix)
+afn_90=[]
+for i in gaikan:
+    afn_90.append(cv2.warpAffine(i, affine_matrix3, size, flags=cv2.INTER_LINEAR))
 
 
 # In[83]: connection of all parts
 
 
-seen5000=np.r_[img_batch, low_cont_img, high_cont_img,ganma, ganma1, blur_img, img_tmp, img_tmp2,ganma2, ganma3]
+seen5000 = np.concatenate((img_batch, low_cont_img, high_cont_img,ganma, ganma1,
+                           blur_img, img_tmp, img_tmp2,ganma2, ganma3, afn_90))
 seen5000.shape
 
 
