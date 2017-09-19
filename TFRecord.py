@@ -40,10 +40,10 @@ def dense_to_one_hot(labels_dense, num_classes):
 
 
 train_image=np.concatenate((im1,im2,im3,im4,im5))
-tuple_image=tuple(train_image)
+tr_im=tuple(train_image)
 
 train_label=la1+la2+la3+la4+la5
-tuple_label=tuple(train_label)
+tr_la=tuple(train_label)
 
 
 # In[4]:
