@@ -96,7 +96,7 @@ def unpickle(file):
 test= unpickle("train_image.pickle")
 
 
-X_image=np.array(test)/255
+X_image=np.array(test)/127.5-1
 X_image.shape
 
 
@@ -128,7 +128,7 @@ def generator():
     def model(z_):
         nonlocal reuse
         batch_size=64
-        g_fc = 32
+        g_fc = 64
         with tf.variable_scope("generator", reuse=reuse) as scope:
             # project `z` and reshape
             z, h0_w, h0_b = linear(z_, g_fc*4*4*8, 'g_h0_lin',with_w=True)
@@ -150,7 +150,7 @@ def sampler():# shape=(batch_size, 64, 64, 3)　
     def model(z_):
         nonlocal reuse
         batch_size=64
-        g_fc = 32
+        g_fc = 64
         with tf.variable_scope("generator",reuse=reuse) as scope:
             # project `z` and reshape
             z= linear(z_, g_fc*4*4*8,'g_h0_lin')
