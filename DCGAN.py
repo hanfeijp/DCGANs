@@ -251,7 +251,7 @@ with tf.Session(config=run_config) as sess:
                 for i in range(8):
                     rows.append(np.hstack(samples[col * i + 0:col * i + col]))
                 vnari=np.vstack(rows)
-                plt.imshow(vnari)
+                plt.imshow((vnari+1.)/2.)
                 plt.show()
             # save sess to directory
             if np.mod(counter, 2)==1:
@@ -262,6 +262,10 @@ with tf.Session(config=run_config) as sess:
 # In[ ]: # Restoring　session from directory and move again                            
                                                
 def move_once(saver):
+    saver=tf.train.Saver()
+    run_config = tf.ConfigProto()
+    run_config.gpu_options.allow_growth=True
+                             
     with tf.Session() as sess:
         ckpt = tf.train.get_checkpoint_state('/Users/hagiharatatsuya/Downloads/dcgan_dir')
         if ckpt and ckpt.model_checkpoint_path:
@@ -308,7 +312,7 @@ def move_once(saver):
                     for i in range(8):
                         rows.append(np.hstack(samples[col * i + 0:col * i + col]))
                     vnari=np.vstack(rows)
-                    plt.imshow(vnari)
+                    plt.imshow((vnari+1.)/2.)
                     plt.show()
                 if np.mod(counter, 10)==1:
                     saver.save(sess, '/Users/hagiharatatsuya/Downloads/dcgan_dir/ckpt')
