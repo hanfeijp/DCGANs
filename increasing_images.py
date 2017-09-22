@@ -5,7 +5,50 @@ import sys
 import pickle
 import numpy as np
 import cv2
+import scipy.misc
 import matplotlib.pyplot as plt
+
+
+
+def get_image(image_path, input_height, input_width,
+              resize_height=64, resize_width=64,
+              crop=True, grayscale=False):
+  image = imread(image_path, grayscale)
+  return transform(image, input_height, input_width, resize_height, resize_width, crop)
+
+
+
+def imread(path, grayscale = False):
+    if (grayscale):
+        return scipy.misc.imread(path, flatten = True).astype(np.float)
+    else:
+        return scipy.misc.imread(path).astype(np.float)
+
+    
+    
+def transform(image, input_height, input_width, 
+              resize_height=64, resize_width=64, crop=True):
+  if crop:
+    cropped_image = center_crop(
+      image, input_height, input_width, 
+      resize_height, resize_width)
+  else:
+    cropped_image = scipy.misc.imresize(image, [resize_height, resize_width])
+  return np.array(cropped_image)
+
+
+
+
+def center_crop(x, crop_h, crop_w,
+                resize_h=64, resize_w=64):
+  if crop_w is None:
+    crop_w = crop_h
+  h, w = x.shape[:2]
+  j = int(round((h - crop_h)/2.))
+  i = int(round((w - crop_w)/2.))
+  return scipy.misc.imresize(
+      x[j:j+crop_h, i:i+crop_w], [resize_h, resize_w])
+
 
 
 
@@ -20,25 +63,22 @@ def unpickle(file):
     return data
 
 
-path1="/Users/hagiharatatsuya/Desktop/ロビーダミー128px"
+path1="/Users/hagiharatatsuya/Downloads/DCGAN-tensorflow/data/celebA"
 images = os.listdir(path1) #ディレクトリのパスをここに書く
 namedic = {int(name.split(".")[0]):name for name in images}
-name_order=[]
+lobby_name_order=[]
 for lst in sorted(namedic.items()):
-    name_order.append(lst[1])
-len(name_order)
+    lobby_name_order.append(lst[1])  # Set images in numerical order
 
 
 
-# In[76]: set images in numerical order
+# In[76]: crop images for ideal size
 
+input_height=108  # height and wide size to zoom images
+input_wide=108
 
-img_batch=[]
-for i in name_order:
-    img_batch.append(cv2.imread(path1+'/'+i))
-plt.imshow(img_batch[111], 'gray')#32×32
-plt.show() 
-len(img_batch)
+img_batch = [get_image(path1+'/'+batch, input_height, input_wide, resize_height=64, resize_width=64,
+              crop=True,grayscale=False) for batch in lobby_name_order]
 
 
 # In[77]: # contrast
