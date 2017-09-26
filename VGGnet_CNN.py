@@ -25,11 +25,11 @@ def distorted_inputs(data_dir, batch_size):
       features={"label": tf.FixedLenFeature([], tf.int64),
           "image": tf.FixedLenFeature([], tf.string)})
     label = tf.cast(features["label"], tf.int32)
-    imgin = tf.reshape(tf.decode_raw(features["image"], tf.uint8), tf.stack([128, 128, 3]))
+    imgin = tf.reshape(tf.decode_raw(features["image"], tf.uint8), tf.stack([96, 96, 3]))
     reshaped_image = tf.cast(imgin, tf.float32)
 
-    height = 96
-    width = 96
+    height = 64
+    width = 64
 
     distorted_image = tf.random_crop(reshaped_image, [height, width, 3])
     distorted_image = tf.image.random_flip_left_right(distorted_image)
@@ -38,9 +38,10 @@ def distorted_inputs(data_dir, batch_size):
 
     float_image = tf.image.per_image_standardization(distorted_image)
     float_image.set_shape([height, width, 3])
-
+    
+    data_size = 25300
     min_fraction_of_examples_in_queue = 0.4
-    min_queue_examples = int(30000*min_fraction_of_examples_in_queue)
+    min_queue_examples = int(data_size*min_fraction_of_examples_in_queue)
     print ('Filling queue with %d CIFAR images before starting to train. '
          'This will take a few minutes.' % min_queue_examples)
     
@@ -49,6 +50,7 @@ def distorted_inputs(data_dir, batch_size):
         num_threads=num_preprocess_threads,capacity=min_queue_examples + 3 * batch_size,
         min_after_dequeue=min_queue_examples)
     
+    tf.summary.image('images', images)
     return images, tf.reshape(label_batch, [batch_size])
 
 
@@ -66,6 +68,7 @@ def cnn(x):
 
     def _activation_summary(x):
         tensor_name = x.op.name
+        tf.summary.histogram(tensor_name+'/activations', x)
         tf.summary.scalar(tensor_name + '/sparsity', tf.nn.zero_fraction(x))
 
     with tf.variable_scope('conv1') as scope:
@@ -76,34 +79,38 @@ def cnn(x):
         conv1 = tf.nn.relu(bias, name='conv1')
         _activation_summary(conv1)
     pool1 = tf.nn.max_pool(conv1, ksize=[1, 3, 3, 1], strides=[1, 2, 2, 1], padding='SAME', name='pool1')
-
+    norm1 = tf.nn.lrn(pool1, 4, bias=1.0, alpha=0.001 / 9.0, beta=0.75, name='norm1')
+    
     with tf.variable_scope('conv2') as scope:
         kernel = _variable_with_weight_decay('weights',shape=[3, 3, 32, 64],stddev=0.1,wd=0.0)
-        conv = tf.nn.conv2d(pool1, kernel, [1, 1, 1, 1], padding='SAME')
+        conv = tf.nn.conv2d(norm1, kernel, [1, 1, 1, 1], padding='SAME')
         biases = tf.get_variable('biases', shape=[64], initializer=tf.constant_initializer(0.0))
         bias = tf.nn.bias_add(conv, biases)
         conv2 = tf.nn.relu(bias, name='conv2')
         _activation_summary(conv2)
     pool2 = tf.nn.max_pool(conv2, ksize=[1, 3, 3, 1], strides=[1, 2, 2, 1], padding='SAME', name='pool2')
-
+    norm2 = tf.nn.lrn(pool2, 4, bias=1.0, alpha=0.001 / 9.0, beta=0.75, name='norm1')
+    
     with tf.variable_scope('conv3') as scope:
         kernel = _variable_with_weight_decay('weights',shape=[3, 3, 64, 128],stddev=0.1,wd=0.0)
-        conv = tf.nn.conv2d(pool2, kernel, [1, 1, 1, 1], padding='SAME')
+        conv = tf.nn.conv2d(norm2, kernel, [1, 1, 1, 1], padding='SAME')
         biases = tf.get_variable('biases', shape=[128], initializer=tf.constant_initializer(0.0))
         bias = tf.nn.bias_add(conv, biases)
         conv3 = tf.nn.relu(bias, name='conv3')
         _activation_summary(conv3)
     pool3 = tf.nn.max_pool(conv3, ksize=[1, 3, 3, 1], strides=[1, 2, 2, 1], padding='SAME', name='pool3')
-
+    norm3 = tf.nn.lrn(pool3, 4, bias=1.0, alpha=0.001 / 9.0, beta=0.75, name='norm1')
+    
     with tf.variable_scope('conv4') as scope:
         kernel = _variable_with_weight_decay('weights',shape=[3, 3, 128, 256],stddev=5e-2,wd=0.0)
-        conv = tf.nn.conv2d(pool3, kernel, [1, 1, 1, 1], padding='SAME')
+        conv = tf.nn.conv2d(norm3, kernel, [1, 1, 1, 1], padding='SAME')
         biases = tf.get_variable('biases', shape=[256], initializer=tf.constant_initializer(0.0))
         bias = tf.nn.bias_add(conv, biases)
         conv4 = tf.nn.relu(bias, name='conv4')
         _activation_summary(conv4)
     pool4 = tf.nn.max_pool(conv4, ksize=[1, 3, 3, 1], strides=[1, 2, 2, 1], padding='SAME', name='pool4')
-
+    norm4 = tf.nn.lrn(pool4, 4, bias=1.0, alpha=0.001 / 9.0, beta=0.75, name='norm1')
+    
     with tf.variable_scope('fc5') as scope:
         dim = 1
         for d in pool4.get_shape()[1:].as_list():
@@ -121,12 +128,12 @@ def cnn(x):
         _activation_summary(fc6)
 
     with tf.variable_scope('fc7') as scope:
-        weights = _variable_with_weight_decay('weights', [256, 3], stddev=0.02, wd=0.0)
-        biases = tf.get_variable('biases', shape=[3], initializer=tf.constant_initializer(0.0))
+        weights = _variable_with_weight_decay('weights', [256, 4], stddev=0.02, wd=0.0)
+        biases = tf.get_variable('biases', shape=[4], initializer=tf.constant_initializer(0.0))
         fc7 = tf.nn.bias_add(tf.matmul(fc6, weights), biases, name='fc7')
         _activation_summary(fc7)
 
-    return fc7   #shape=(BATCH_SIZE, 3)
+    return fc7   # shape=(BATCH_SIZE, 4)
 
 
 # In[3]: # loss
@@ -148,15 +155,25 @@ def train(total_loss, global_step):
     
     loss_averages = tf.train.ExponentialMovingAverage(0.9, name='avg')
     losses = tf.get_collection('losses')
-    loss_averages_op = loss_averages.apply(losses + [total_loss]) 
+    loss_averages_op = loss_averages.apply(losses + [total_loss])
     
+    for l in losses + [total_loss]:
+        tf.summary.scalar(l.op.name+' (raw)', l)
+        tf.summary.scalar(l.op.name, loss_averages.average(l))
+        
     # Compute gradients.
     with tf.control_dependencies([loss_averages_op]):
-        opt = tf.train.AdamOptimizer() # instead of GradientDescentOptimizer
+        opt = tf.train.AdamOptimizer() # instead of tf.train.AdamOptimizer()
         grads = opt.compute_gradients(total_loss)
 
     # Apply gradients.
     apply_gradient_op = opt.apply_gradients(grads, global_step=global_step)
+    for var in tf.trainable_variables():
+        tf.summary.histogram(var.op.name, var)
+        
+    for grad, var in grads:
+        if grad is not None:
+            tf.summary.histogram(var.op.name + '/gradients', grad)
 
     # Track the moving averages of all trainable variables.
     variable_averages = tf.train.ExponentialMovingAverage(0.9999, global_step)
@@ -165,7 +182,7 @@ def train(total_loss, global_step):
     with tf.control_dependencies([apply_gradient_op, variables_averages_op]):
         train_op = tf.no_op(name='train')
 
-    return train_op #op for training.
+    return train_op # Op for training.
 
 
 # In[ ]: # Session
@@ -174,7 +191,7 @@ def train(total_loss, global_step):
 with tf.Graph().as_default():
     global_step = tf.contrib.framework.get_or_create_global_step()
     # for train
-    train_image, train_label = distorted_inputs('/Users/hagiharatatsuya/Downloads/manshion_train.tfrecords',128)
+    train_image, train_label = distorted_inputs('/Users/hagiharatatsuya/Downloads/CNN, DCGANコード/cnn_train.tfrecords',128)
     c_logits = cnn(train_image)
     loss = loss(c_logits, train_label)
     train_op = train(loss, global_step)
@@ -203,8 +220,8 @@ with tf.Graph().as_default():
                 print (format_str % (datetime.now(), self._step, loss_value,
                                examples_per_sec, sec_per_batch))
     # checkpoint_dir must be directory
-    with tf.train.MonitoredTrainingSession(checkpoint_dir='/Users/hagiharatatsuya/Downloads/check_point',
-                                           hooks=[tf.train.StopAtStepHook(last_step=15000),
+    with tf.train.MonitoredTrainingSession(checkpoint_dir='/Users/hagiharatatsuya/Downloads/cnn_tbdir',
+                                           hooks=[tf.train.StopAtStepHook(last_step=4000),
                tf.train.NanTensorHook(loss), _LoggerHook()], config=tf.ConfigProto(log_device_placement=False)) as mon_sess:
         while not mon_sess.should_stop():
             mon_sess.run(train_op)
