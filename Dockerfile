@@ -14,8 +14,7 @@ RUN apt-get -y install python3.5 python3.5-dev
 RUN apt-get -y install python3-numpy python3-scipy python3-matplotlib
 RUN apt-get -y install libcupti-dev # NVIDIA CUDA Profiling
 RUN pip3 install opencv-python
-RUN mkdir /home/cnn_dir
-RUN mkdir /home/dcgan_dir
+RUN mkdir /home/cnn_dir /home/dcgan_dir
 ADD manshion_train.tfrecords /home
 ADD manshion_test.tfrecords /home
 ADD gakan_train128.pickle /home
