@@ -64,7 +64,7 @@ def unpickle(file):
 
 
 path1="/Users/hagiharatatsuya/Downloads/DCGAN-tensorflow/data/celebA"
-images = os.listdir(path1) #ディレクトリのパスをここに書く
+images = os.listdir(path1) # Set directory path here
 namedic = {int(name.split(".")[0]):name for name in images}
 lobby_name_order=[]
 for lst in sorted(namedic.items()):
@@ -223,7 +223,7 @@ seen5000 = np.concatenate((img_batch, low_cont_img, high_cont_img,ganma, ganma1,
 seen5000.shape
 
 
-# In[84]: flip right and left which its images bacome twice
+# In[84]: flip right and left which its images become twice
 
 
 flip_img=[]
