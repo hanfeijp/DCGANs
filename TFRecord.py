@@ -36,7 +36,7 @@ def dense_to_one_hot(labels_dense, num_classes):
 
 
 
-# In[3]: # train_image and train_label is cifar10 data
+# In[3]: # train_image and train_label are cifar-10 data
 
 
 train_image=np.concatenate((im1,im2,im3,im4,im5))
@@ -53,7 +53,7 @@ for i, v in zip(tr_im, tr_la):
     listed.append([v,i])
     
 
-# In[5]: writing data to TFRecords
+# In[5]: writing data to TFRecords file
 
 
 writer = tf.python_io.TFRecordWriter('/Users/hagiharatatsuya/Downloads/sample.tfrecords')
@@ -96,7 +96,7 @@ images, labels = tf.train.batch(
       capacity=1000 + 3 * 128)
 
 
-# In[8]: for confirming data contents
+# In[8]: confirming data contents
 
 with tf.Session() as sess:
     sess.run(tf.local_variables_initializer())
