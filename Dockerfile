@@ -6,7 +6,7 @@ LABEL maintainer "example@example.jp"
 RUN apt-get update && apt-get upgrade
 RUN apt-get -y install python3-pip curl
 # SELECT CPU or GPU
-#RUN pip3 install keras tensorflow-gpu jupyter opencv-python
+# RUN pip3 install keras tensorflow-gpu jupyter opencv-python
 RUN pip3 install keras tensorflow jupyter
 
 RUN pip3 install --upgrade pip
