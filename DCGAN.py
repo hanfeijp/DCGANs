@@ -37,7 +37,14 @@ def merge(images, size):
         return img
  
 
-def save_images(images, size):
+def imsave(images,size, path):
+    image = np.squeeze(merge((images+1.)/2., size))
+    return scipy.misc.imsave(path, image)
+
+def save_images(images, size, image_path):
+    return imsave(images, size, image_path)
+
+def show_images(images, size):
     return np.squeeze(merge((images+1.)/2., size))
 
     
@@ -281,7 +288,7 @@ def move_once(saver):
                 counter += 1
                 print("Epoch: [%2d] [%4d/%4d] time:%4.4f, d_loss: %.8f, g_loss: %.8f" % (epoch, idx, batch_idxs,
                                                                                          time.time()-start_time, errD_fake+errD_real, errG))
-            
+                 save_images(samples, (8, 8), '/home/dcgan_dir/train_{:02d}_{:04d}.png'.format(epoch, idx))
                 # show sample image while trainig
                 if np.mod(counter, 30)==1:
                     samples, d_loss_sample, g_loss_sample = sess.run([sampler, d_loss, g_loss],
@@ -289,14 +296,14 @@ def move_once(saver):
                 
                     print("[Sample] d_loss:%.8f, g_loss:%.8f" % (d_loss_sample, g_loss_sample))
                 
-                    vnari = save_images(samples[:16], (4, 4))
+                    vnari=show_images(samples, (8,8))
                     plt.imshow(vnari)
                     plt.show()
                 # save sess to directory
                 if np.mod(counter, 100)==1:
-                    saver.save(sess, "/home/dcgan_dir/decgan")
+                    saver.save(sess, "/home/cnn_dir/decgan")
 
-                             
+                    
 # In[ ]:  
                              
 saver = tf.train.Saver()
