@@ -241,7 +241,8 @@ with tf.Session(config=run_config) as sess:
                 
                 print("[Sample] d_loss:%.8f, g_loss:%.8f" % (d_loss_sample, g_loss_sample))
                 
-                vnari = save_images(samples[:16], (4, 4))
+                save_images(samples, (8, 8), '/home/dcgan_dir/train_{:02d}_{:04d}.png'.format(epoch, idx))
+                vnari=show_images(samples, (8,8))
                 plt.imshow(vnari)
                 plt.show()
             # save sess to directory
@@ -288,14 +289,14 @@ def move_once(saver):
                 counter += 1
                 print("Epoch: [%2d] [%4d/%4d] time:%4.4f, d_loss: %.8f, g_loss: %.8f" % (epoch, idx, batch_idxs,
                                                                                          time.time()-start_time, errD_fake+errD_real, errG))
-                 save_images(samples, (8, 8), '/home/dcgan_dir/train_{:02d}_{:04d}.png'.format(epoch, idx))
+                
                 # show sample image while trainig
                 if np.mod(counter, 30)==1:
                     samples, d_loss_sample, g_loss_sample = sess.run([sampler, d_loss, g_loss],
                                                feed_dict={z: sample_z, image: sample_images})
-                
+                    
                     print("[Sample] d_loss:%.8f, g_loss:%.8f" % (d_loss_sample, g_loss_sample))
-                
+                    save_images(samples, (8, 8), '/home/dcgan_dir/train_{:02d}_{:04d}.png'.format(epoch, idx))
                     vnari=show_images(samples, (8,8))
                     plt.imshow(vnari)
                     plt.show()
