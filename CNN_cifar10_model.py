@@ -228,7 +228,7 @@ def train(total_loss, global_step):
 with tf.Graph().as_default():
     global_step = tf.contrib.framework.get_or_create_global_step()
     # for train
-    train_image, train_label = distorted_inputs('/Users/hagiharatatsuya/Downloads/sample.tfrecords', 128)
+    train_image, train_label = distorted_inputs('/Users/Downloads/sample.tfrecords', 128)
     c_logits = cnn(train_image)
     loss = loss(c_logits, train_label)
     train_op = train(loss, global_step)
@@ -257,7 +257,7 @@ with tf.Graph().as_default():
                 print (format_str % (datetime.now(), self._step, loss_value,
                                examples_per_sec, sec_per_batch))
     # checkpoint_dir must be directory
-    with tf.train.MonitoredTrainingSession(checkpoint_dir='/Users/hagiharatatsuya/Downloads/check_point',
+    with tf.train.MonitoredTrainingSession(checkpoint_dir='/Users/Downloads/check_point',
                                            hooks=[tf.train.StopAtStepHook(last_step=10000),
                tf.train.NanTensorHook(loss), _LoggerHook()], config=tf.ConfigProto(log_device_placement=False)) as mon_sess:
         while not mon_sess.should_stop():
