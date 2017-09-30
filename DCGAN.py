@@ -259,7 +259,7 @@ def move_once(saver):
     run_config.gpu_options.allow_growth=True
                              
     with tf.Session(config=run_config) as sess:
-        ckpt = tf.train.get_checkpoint_state('/Users/hagiharatatsuya/Downloads/dcgan_dir')
+        ckpt = tf.train.get_checkpoint_state('/Users/Downloads/dcgan_dir')
         if ckpt and ckpt.model_checkpoint_path:
             # Restores from checkpoint
             saver.restore(sess, ckpt.model_checkpoint_path)
