@@ -133,7 +133,7 @@ def cnn(x):
 
 def eval_once(saver, summary_writer, top_k_op, summary_op):
     with tf.Session() as sess:
-        ckpt = tf.train.get_checkpoint_state('/Users/hagiharatatsuya/Downloads/cnn_tbdir')
+        ckpt = tf.train.get_checkpoint_state('/Users/Downloads/cnn_tbdir')
         if ckpt and ckpt.model_checkpoint_path:
             # Restores from checkpoint
             saver.restore(sess, ckpt.model_checkpoint_path)
@@ -180,7 +180,7 @@ def eval_once(saver, summary_writer, top_k_op, summary_op):
 
 with tf.Graph().as_default() as g:
     # Get images and labels for CIFAR-10.
-    images, labels = inputs('/Users/hagiharatatsuya/Downloads/CNN, DCGANコード/cnn_test.tfrecords',128)
+    images, labels = inputs('/Users/Downloads/CNN, DCGANコード/cnn_test.tfrecords',128)
     
     logits = cnn(images)
 
