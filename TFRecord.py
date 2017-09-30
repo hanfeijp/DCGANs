@@ -56,7 +56,7 @@ for i, v in zip(tr_im, tr_la):
 # In[5]: writing data to TFRecords file
 
 
-writer = tf.python_io.TFRecordWriter('/Users/hagiharatatsuya/Downloads/sample.tfrecords')
+writer = tf.python_io.TFRecordWriter('/Users/Downloads/sample.tfrecords')
 for label, img in listed:
     record = tf.train.Example(features=tf.train.Features(feature={
           "label": tf.train.Feature(
@@ -72,7 +72,7 @@ writer.close()
 # In[6]:
 
 
-file_name_queue = tf.train.string_input_producer(['/Users/hagiharatatsuya/Downloads/sample.tfrecords'])
+file_name_queue = tf.train.string_input_producer(['/Users/Downloads/sample.tfrecords'])
 
 reader = tf.TFRecordReader()
 _, serialized_example = reader.read(file_name_queue)
