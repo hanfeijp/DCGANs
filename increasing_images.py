@@ -63,7 +63,7 @@ def unpickle(file):
     return data
 
 
-path1="/Users/hagiharatatsuya/Downloads/DCGAN-tensorflow/data/celebA"
+path1="/Users/Downloads/DCGAN-tensorflow/data/celebA"
 images = os.listdir(path1) # Set directory path here
 namedic = {int(name.split(".")[0]):name for name in images}
 lobby_name_order=[]
