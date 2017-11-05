@@ -35,5 +35,5 @@ http://trafalbad.hatenadiary.jp/entry/2017/09/30/142505
 
 http://trafalbad.hatenadiary.jp/entry/2017/10/28/223421
 
-を参照。
+を参照。本コードの活用詳細は、ファイル「Project2,3プレゼン用2017.102.pdf」のProject2を参照
 
