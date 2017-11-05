@@ -12,19 +12,6 @@ $ docker build -t dcgan .
 $ docker run -it dcgan
 ```
 
-## Sites that DCGANs code and logic are wriiten
-***** DCGANs code *****
-
-http://memo.sugyan.com/entry/20160516/1463359395
-
-https://github.com/carpedm20/DCGAN-tensorflow
-
-***** DCGANs logic *****
-
-http://qiita.com/sergeant-wizard/items/0a57485bc90a35efcf26
-
-http://mizti.hatenablog.com/entry/2016/12/10/224426
-
 
 
 Jupyter用のDCGANコードを作成。ローカルならコード内でファイルを指定し、Docker環境ならDockerfileでフォルダを作れば画像が保存されていく。
